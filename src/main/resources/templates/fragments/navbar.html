@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+</head>
+<body>
+  <div th:fragment="navbar">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand" th:href="@{/dashboard}">My Website</a>
+
+        <!-- Hamburger menu (3 lines) -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" 
+                aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Menu links -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link" th:href="@{/dashboard}">Dashboard</a>
+            </li>
+
+            <!-- Only visible for ADMIN users -->
+            <li class="nav-item" th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+              <a class="nav-link" th:href="@{/upload}">Upload</a>
+            </li>
+          </ul>
+
+          <!-- Right side: Logout button -->
+          <div class="d-flex">
+            <a class="btn btn-outline-light btn-sm" th:href="@{/logout}">Logout</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </div>
+</body>
+</html>
