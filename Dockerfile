@@ -1,14 +1,33 @@
-# Use official OpenJDK image
-FROM openjdk:17-jdk-slim
+# 1️⃣ Use official Maven + OpenJDK image for build
+FROM maven:3.9.3-eclipse-temurin-17 AS build
 
 # Set working directory
 WORKDIR /app
 
-# Copy everything
-COPY . .
+# Copy Maven wrapper (if you use it) and pom.xml
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
 
-# Build the app
+# Make mvnw executable (if using wrapper)
+RUN chmod +x mvnw
+
+# Copy all source code
+COPY src ./src
+
+# Build Spring Boot jar (skip tests)
 RUN ./mvnw clean package -DskipTests
 
-# Run the app (adjust JAR name below)
-CMD ["java", "-jar", "target/website-0.0.1-SNAPSHOT.jar"]
+# 2️⃣ Create smaller runtime image
+FROM eclipse-temurin:17-jdk-jammy
+
+WORKDIR /app
+
+# Copy built jar from previous stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Expose port (default Spring Boot port)
+EXPOSE 8080
+
+# Run the app
+ENTRYPOINT ["java","-jar","app.jar"]
