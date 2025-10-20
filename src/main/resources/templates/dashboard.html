@@ -7,135 +7,252 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        .interaction-buttons button, .interaction-buttons a {
-            margin-top: 5px;
+        /* Navbar */
+        .navbar {
+            background: #222;
+            color: white;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 12px;
         }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .navbar a:hover {
+            text-decoration: underline;
+        }
+
+        /* Cards */
         .card-img-top {
             max-height: 300px;
             object-fit: contain;
+            width: 100%;
         }
+
+        /* Ad overlay */
+        .ad-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            z-index: 10;
+        }
+
+        .interaction-buttons button {
+            margin-top: 5px;
+            width: 100%;
+        }
+
         .comment-box {
             margin-top: 10px;
+            display: none;
         }
+
         .comment-list {
             margin-top: 5px;
             font-size: 0.9rem;
             white-space: pre-wrap;
         }
+
+        .share-buttons button {
+            margin: 3px;
+            font-size: 0.85rem;
+        }
+
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <!-- ✅ Navbar -->
-    <div th:replace="~{fragments/navbar :: navbar}"></div>
 
-    <div class="container mt-4">
-        <h3>Welcome to the Dashboard!</h3>
-        <p>You can post images/videos here daily.</p>
+<!-- ✅ Navbar -->
+<nav class="navbar">
+  <a href="/dashboard">Home</a>
+  <a href="/most-viewed">Most Viewed</a>
+  <a href="/most-liked">Most Liked</a>
+  <a href="/celebrity-videos">Celebrity Videos</a>
+  <a href="/about">About</a>
+</nav>
 
-        <!-- ✅ Upload Button visible only for ADMIN -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
-                <a href="/upload" class="btn btn-primary">Upload Content</a>
-            </div>
+<div class="container mt-4">
+    <h3>Welcome to the Dashboard!</h3>
+    <p>Explore and upload awesome videos or images daily.</p>
 
-            <!-- Search Bar -->
-            <form class="d-flex" th:action="@{/dashboard}" method="get">
-                <input class="form-control me-2" type="search" name="keyword" 
-                       placeholder="Search by title or description" 
-                       th:value="${keyword}">
-                <button class="btn btn-outline-success me-2" type="submit">Search</button>
-                <a th:href="@{/dashboard}" class="btn btn-outline-secondary">Clear</a>
-            </form>
+    <!-- ✅ Upload only for ADMIN -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+            <a href="/upload" class="btn btn-primary">Upload Content</a>
         </div>
 
-        <!-- ✅ Display Uploaded Content -->
-        <div class="row mt-4" th:if="${contents != null}">
-            <h4>Uploaded Content</h4>
+        <!-- Search Bar -->
+        <form class="d-flex" th:action="@{/dashboard}" method="get">
+            <input class="form-control me-2" type="search" name="keyword"
+                   placeholder="Search by title, tags or description"
+                   th:value="${keyword}">
+            <button class="btn btn-outline-success me-2" type="submit">Search</button>
+            <a th:href="@{/dashboard}" class="btn btn-outline-secondary">Clear</a>
+        </form>
+    </div>
 
-            <!-- No results -->
-            <div th:if="${#lists.isEmpty(contents)}" class="text-center text-muted mt-4">
-                <p>No content found.</p>
-            </div>
+    <!-- ✅ Uploaded Content -->
+    <div class="row mt-4" th:if="${contents != null}">
+        <div th:if="${#lists.isEmpty(contents)}" class="text-center text-muted mt-4">
+            <p>No content found.</p>
+        </div>
 
-            <!-- Cards -->
-            <div class="col-md-4 mb-3" th:each="c : ${contents}">
-                <div class="card shadow-sm h-100">
-                    <!-- Image -->
-                    <div th:if="${c.fileType == 'image'}">
-                        <img th:src="@{${c.filePath}}" class="card-img-top" alt="Image">
+        <div class="col-md-4 mb-3" th:each="c : ${contents}">
+            <div class="card shadow-sm position-relative h-100">
+
+                <!-- 🖼 Image -->
+                <div th:if="${c.fileType == 'image'}">
+                    <img th:src="@{${c.filePath}}" class="card-img-top" alt="Image">
+                </div>
+
+                <!-- 🎬 Video with 5s ad -->
+                <div th:if="${c.fileType == 'video'}" class="position-relative">
+                    <video class="card-img-top" preload="none" controlslist="nodownload"
+                           th:id="'video-' + ${c.id}">
+                        <source th:src="@{${c.filePath}}" type="video/mp4">
+                    </video>
+                    <div class="ad-overlay" th:id="'ad-' + ${c.id}">
+                        <p>Advertisement... (5 sec)</p>
                     </div>
-                    <!-- Video -->
-                    <div th:if="${c.fileType == 'video'}">
-                        <video th:src="@{${c.filePath}}" class="card-img-top" controls></video>
+                </div>
+
+                <div class="card-body">
+                    <h5 th:text="${c.title}"></h5>
+                    <p th:text="${c.description}"></p>
+                    <p class="text-muted small" th:text="'Type: ' + ${c.fileType}"></p>
+
+                    <!-- 👁 Views & 🏷 Tags -->
+                    <p>👁 Views: <span th:text="${c.views}">0</span></p>
+                    <p><strong>🏷 Tags:</strong> <span th:text="${c.tags}"></span></p>
+
+                    <!-- ❤️ Like / 💬 Comment / 🔗 Share -->
+                    <div class="interaction-buttons mt-2">
+                        <form th:action="@{/content/like/{id}(id=${c.id})}" 
+    					  method="post"
+      					th:attr="onsubmit='return likeOnce(' + ${c.id} + ')'" 
+     						 style="display:inline;">
+    			<button class="btn btn-outline-primary btn-sm" type="submit">
+        					👍 Like (<span th:text="${c.likes}">0</span>)
+    				</button>
+						</form>
+                        
+
+                        <button class="btn btn-outline-secondary btn-sm"
+                                type="button"
+                                onclick="toggleCommentBox(this)">💬 Comment</button>
+
+                        <!-- Share Buttons -->
+                        <div class="share-buttons mt-2">
+                            <button class="btn btn-success btn-sm"
+                                    th:attr="onclick='shareLink(' + ${c.id} + ', \"whatsapp\")'">WhatsApp</button>
+                            <button class="btn btn-primary btn-sm"
+                                    th:attr="onclick='shareLink(' + ${c.id} + ', \"facebook\")'">Facebook</button>
+                            <button class="btn btn-info btn-sm text-white"
+                                    th:attr="onclick='shareLink(' + ${c.id} + ', \"twitter\")'">Twitter</button>
+                           <button class="btn btn-dark btn-sm"
+        th:attr="onclick='copyLink(' + ${c.id} + ')'" >Copy Link</button>
+                           
+                        </div>
                     </div>
 
-                    <div class="card-body">
-                        <h5 th:text="${c.title}"></h5>
-                        <p th:text="${c.description}"></p>
-                        <p class="text-muted small" th:text="'Type: ' + ${c.fileType}"></p>
-
-                        <!-- Like, Comment, Share -->
-                        <div class="interaction-buttons mt-2">
-                            <!-- Like -->
-                            <form th:action="@{/content/like/{id}(id=${c.id})}" method="post" style="display:inline;">
-                                <button class="btn btn-outline-primary btn-sm w-100" type="submit">
-                                    👍 Like (<span th:text="${c.likes}">0</span>)
-                                </button>
-                            </form>
-
-                            <!-- Comment -->
-                            <button class="btn btn-outline-secondary btn-sm w-100 mt-1"
-                                    type="button" 
-                                    onclick="toggleCommentBox(this)">💬 Comment</button>
-
-                            <!-- Share -->
-                            <button class="btn btn-outline-success btn-sm w-100 mt-1"
-                                    type="button"
-                                    onclick="shareWhatsApp('Check this content: ' + this.getAttribute('data-link'))"
-                                    th:attr="data-link=${c.filePath}">🔗 Share</button>
-                        </div>
-
-                        <!-- Comment Box -->
-                        <div class="comment-box" style="display:none;">
-                            <form th:action="@{/content/comment/{id}(id=${c.id})}" method="post">
-                                <textarea name="comment" class="form-control mt-2" placeholder="Write a comment..." required></textarea>
-                                <button class="btn btn-sm btn-primary mt-1" type="submit">Post</button>
-                            </form>
-
-                            <!-- Show Comments -->
-                            <div class="comment-list" th:if="${c.comments != null}" th:text="${c.comments}"></div>
-                        </div>
-
-                        <!-- ✅ Delete only for ADMIN -->
-                        <form th:if="${#authorization.expression('hasRole(''ADMIN'')')}"
-                              th:action="@{/content/delete/{id}(id=${c.id})}" method="post"
-                              onsubmit="return confirm('Are you sure you want to delete this content?');">
-                            <button class="btn btn-danger btn-sm mt-3" type="submit">Delete</button>
+                    <!-- 💬 Comment Box -->
+                    <div class="comment-box">
+                        <form th:action="@{/content/comment/{id}(id=${c.id})}" method="post">
+                            <textarea name="comment" class="form-control mt-2"
+                                      placeholder="Write a comment..." required></textarea>
+                            <button class="btn btn-sm btn-primary mt-1" type="submit">Post</button>
                         </form>
+                        <div class="comment-list" th:if="${c.comments != null}" th:text="${c.comments}"></div>
                     </div>
+
+                    <!-- 🗑 Delete only for ADMIN -->
+                    <form th:if="${#authorization.expression('hasRole(''ADMIN'')')}"
+                          th:action="@{/content/delete/{id}(id=${c.id})}" method="post"
+                          onsubmit="return confirm('Are you sure you want to delete this content?');">
+                        <button class="btn btn-danger btn-sm mt-3" type="submit">Delete</button>
+                    </form>
                 </div>
             </div>
         </div>
-
-        <!-- Advertisement -->
-        <div class="mt-5 p-3 bg-light border rounded">
-            <h5>Advertisement Section</h5>
-            <p>Ad space placeholder...</p>
-        </div>
     </div>
 
-    <!-- ✅ JS -->
-    <script>
-        function toggleCommentBox(button) {
-            const commentBox = button.closest('.card-body').querySelector('.comment-box');
-            commentBox.style.display = commentBox.style.display === 'none' ? 'block' : 'none';
-        }
+    <!-- 📄 Pagination -->
+    <div class="pagination" th:if="${totalPages > 1}">
+        <a th:if="${currentPage > 0}" th:href="@{/dashboard(page=${currentPage - 1})}" class="btn btn-secondary btn-sm">Previous</a>
+        <span th:text="'Page ' + ${currentPage + 1} + ' of ' + ${totalPages}"></span>
+        <a th:if="${currentPage + 1 < totalPages}" th:href="@{/dashboard(page=${currentPage + 1})}" class="btn btn-secondary btn-sm">Next</a>
+    </div>
 
-        function shareWhatsApp(text) {
-            const encoded = encodeURIComponent(text);
-            const url = 'https://wa.me/?text=' + encoded;
-            window.open(url, '_blank');
-        }
-    </script>
+    <!-- Ad Placeholder -->
+    <div class="mt-5 p-3 bg-light border rounded">
+        <h5>Advertisement Section</h5>
+        <p>Ad space placeholder...</p>
+    </div>
+</div>
+
+<!-- ✅ Scripts -->
+<script>
+function toggleCommentBox(button) {
+    const commentBox = button.closest('.card-body').querySelector('.comment-box');
+    commentBox.style.display = commentBox.style.display === 'none' ? 'block' : 'none';
+}
+
+function likeOnce(id) {
+    if (localStorage.getItem("liked_" + id)) {
+        alert("You already liked this!");
+        return false;
+    }
+    localStorage.setItem("liked_" + id, true);
+    return true;
+}
+
+function shareLink(id, platform) {
+    const link = window.location.origin + "/content/view/" + id;
+    const encoded = encodeURIComponent(link);
+    let url = '';
+    if (platform === 'whatsapp') url = 'https://wa.me/?text=' + encoded;
+    if (platform === 'facebook') url = 'https://www.facebook.com/sharer/sharer.php?u=' + encoded;
+    if (platform === 'twitter') url = 'https://twitter.com/intent/tweet?url=' + encoded;
+    window.open(url, '_blank');
+}
+
+function copyLink(id) {
+    const link = window.location.origin + "/content/view/" + id;
+    navigator.clipboard.writeText(link);
+    alert("Link copied to clipboard!");
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("video").forEach(video => {
+        video.addEventListener("play", function() {
+            const ad = document.getElementById("ad-" + video.id.split("-")[1]);
+            if (ad && ad.style.display !== "flex") {
+                ad.style.display = "flex";
+                video.pause();
+                setTimeout(() => {
+                    ad.style.display = "none";
+                    video.play();
+                }, 5000);
+            }
+        });
+    });
+});
+</script>
+
 </body>
 </html>

@@ -21,28 +21,38 @@ public class Content {
     @Column(length = 50)
     private String fileType;
 
-    // Likes column with default value 0 to avoid NOT NULL errors
+    // ✅ Likes column with default 0
     @Column(nullable = false, columnDefinition = "integer default 0")
     private int likes = 0;
 
-    // Comments column (nullable, can be empty initially)
-    @Column(length = 1000)
+    // ✅ View count
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int views = 0;
+
+    // ✅ Comments (optional)
+    @Column(length = 2000)
     private String comments = "";
 
-    // Default constructor
+    // ✅ Tags (e.g., "sports,funny,celebrity")
+    @Column(length = 255)
+    private String tags = "";
+
+    // ✅ Default constructor
     public Content() {}
 
-    // Constructor
+    // ✅ Constructor with basic fields
     public Content(String title, String description, String filePath, String fileType) {
         this.title = title;
         this.description = description;
         this.filePath = filePath;
         this.fileType = fileType;
         this.likes = 0;
+        this.views = 0;
         this.comments = "";
+        this.tags = "";
     }
 
-    // Getters and Setters
+    // ✅ Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -61,8 +71,14 @@ public class Content {
     public int getLikes() { return likes; }
     public void setLikes(int likes) { this.likes = likes; }
 
+    public int getViews() { return views; }
+    public void setViews(int views) { this.views = views; }
+
     public String getComments() { return comments; }
     public void setComments(String comments) { this.comments = comments; }
+
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
 
     @Override
     public String toString() {
@@ -73,6 +89,8 @@ public class Content {
                 ", filePath='" + filePath + '\'' +
                 ", fileType='" + fileType + '\'' +
                 ", likes=" + likes +
+                ", views=" + views +
+                ", tags='" + tags + '\'' +
                 ", comments='" + comments + '\'' +
                 '}';
     }
