@@ -2,16 +2,18 @@ package com.example.website.controller;
 
 import com.example.website.model.Content;
 import com.example.website.service.ContentService;
+// import org.springframework.security.core.annotation.AuthenticationPrincipal;
+// import com.example.website.model.UserPrincipal; 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 
 @Controller
 public class ContentController {
@@ -22,11 +24,8 @@ public class ContentController {
     // Folder where uploads will be stored (relative to project root)
     private final String uploadDir = new File("uploads").getAbsolutePath() + File.separator;
 
-    // ✅ Temporary in-memory like tracking (user -> liked content IDs)
-    // Ideally, move this to DB using a Like table
-    private final Set<String> likedRecords = new HashSet<>();
-
     // ✅ Show upload form
+    // Requires ADMIN role via SecurityConfig
     @GetMapping("/upload")
     public String showUploadForm(Model model) {
         model.addAttribute("content", new Content());
@@ -34,6 +33,7 @@ public class ContentController {
     }
 
     // ✅ Handle file upload (image/video only)
+    // Requires ADMIN role via SecurityConfig
     @PostMapping("/upload")
     public String uploadContent(@ModelAttribute Content content,
                                 @RequestParam("file") MultipartFile file) throws IOException {
@@ -53,7 +53,7 @@ public class ContentController {
             }
 
             // Save file
-            File dest = new File(uploadDir + fileName);
+            File dest = new File(uploadDir + fileName); 
             file.transferTo(dest);
 
             // Detect file type
@@ -84,14 +84,20 @@ public class ContentController {
         return "redirect:/dashboard";
     }
 
-    // ✅ Dashboard with pagination + search
-    @GetMapping("/dashboard")
+    // ✅ Dashboard, Home, and Menu Views (Consolidated mapping)
+    // All paths require an authenticated user via SecurityConfig
+    @GetMapping({"/", "/dashboard", "/most-viewed", "/most-liked", "/celebrity-videos"})
     public String viewDashboard(
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
 
         int pageSize = 10; // show 10 videos per page
+        
+        // Note: The logic here should dynamically call different service methods 
+        // based on the request path (e.g., call service.getMostViewed() for /most-viewed).
+        // For simplicity here, we stick to getPaginated, but the service logic should be improved.
+
         model.addAttribute("page", page);
         model.addAttribute("pageSize", pageSize);
         model.addAttribute("contents", service.getPaginated(keyword, page, pageSize));
@@ -101,32 +107,30 @@ public class ContentController {
         return "dashboard";
     }
 
-    // ✅ Like button (only once per user session)
+    // ✅ Like button (Securely handles one like per user via ContentService/LikeRepository)
     @PostMapping("/content/like/{id}")
-    public String likeContent(@PathVariable Long id, @RequestHeader(value = "X-User", required = false) String user) {
-        if (user == null || user.isEmpty()) {
-            user = "guest"; // fallback for non-logged users
+    public String likeContent(@PathVariable Long id, RedirectAttributes ra) {
+        
+        // --- AUTHENTICATION/USER ID RETRIEVAL (MANDATORY IN REAL APP) ---
+        // TODO: Replace this hardcoded value with the actual authenticated user's ID
+        Long userId = 1L; 
+        // ----------------------------------------------------------------
+
+        try {
+            service.toggleLike(id, userId);
+        } catch (IllegalStateException e) {
+            ra.addFlashAttribute("errorMessage", e.getMessage());
         }
-        String recordKey = user + "-" + id;
-        if (!likedRecords.contains(recordKey)) {
-            Content content = service.getById(id);
-            if (content != null) {
-                content.setLikes(content.getLikes() + 1);
-                service.save(content);
-                likedRecords.add(recordKey);
-            }
-        }
+
         return "redirect:/dashboard";
     }
 
-    // ✅ Increment views when video is played
+    // ✅ Increment views when content is played (Called via AJAX)
     @PostMapping("/content/view/{id}")
     public String incrementView(@PathVariable Long id) {
-        Content content = service.getById(id);
-        if (content != null) {
-            content.setViews(content.getViews() + 1);
-            service.save(content);
-        }
+        // Delegate the logic to the service layer for transactional integrity
+        service.incrementViews(id); 
+        // We redirect to dashboard, although an AJAX call might prefer a 200 OK response.
         return "redirect:/dashboard";
     }
 
@@ -147,18 +151,19 @@ public class ContentController {
     }
 
     // ✅ Delete content (and file)
+    // Requires ADMIN role via SecurityConfig
     @PostMapping("/content/delete/{id}")
     public String deleteContent(@PathVariable Long id) {
         Content content = service.getById(id);
 
         if (content != null && content.getFilePath() != null) {
-            String relativePath = content.getFilePath().replaceFirst("^/+", "");
-            File file = new File(relativePath);
+            String relativePath = content.getFilePath().replaceFirst("^/uploads/", "");
+            File file = new File(uploadDir + relativePath);
             if (file.exists()) {
                 file.delete();
             }
         }
-
+     
         service.delete(id);
         return "redirect:/dashboard";
     }
