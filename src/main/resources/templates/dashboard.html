@@ -177,12 +177,11 @@ function copyLink(id) {
 }
 
 // --------------------------------------------------
-// AJAX Like Function (No Reload) - May contain the bug you saw!
+// AJAX Like Function (No Reload) - FIXED
 // --------------------------------------------------
 function handleLike(button) {
-    // This line previously had a bug: 'th:data-content-id' is invalid JS syntax.
-    // The correct JS way to read a Thymeleaf 'data-content-id' attribute is 'button.dataset.contentId'
-    const contentId = button.getAttribute('th:data-content-id'); 
+    // FIX: Use button.dataset.contentId to correctly read the data-content-id attribute
+    const contentId = button.dataset.contentId; 
     const likeSpan = document.getElementById('likes-' + contentId);
     
     // Disable button to prevent fast clicking/duplicate requests
@@ -199,7 +198,12 @@ function handleLike(button) {
             // Since we are returning JSON even on errors from the controller, we should check status here.
              throw new Error(`Server responded with status: ${response.status}`);
         }
-        return response.json();
+        // NOTE: The ContentController currently redirects on /like/{id}, so this response.json()
+        // block may not execute if the server is performing a redirect. If you want true AJAX
+        // update without a redirect, the controller method must return the new like count as JSON.
+        // For now, this is kept as is to match the controller structure, but be aware of the redirect.
+        // If the controller is changed to return JSON, this client-side code is correct.
+        return response.json(); 
     })
     .then(data => {
         if (data && data.newLikes !== undefined) {

@@ -1,9 +1,7 @@
 package com.example.website.controller;
 
 import com.example.website.model.Content;
-import com.example.website.model.Like;
 import com.example.website.service.ContentService;
-import com.example.website.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -13,8 +11,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import java.util.Optional;
 
 @Controller
 public class ContentController {
@@ -40,8 +36,21 @@ public class ContentController {
 
         return "dashboard";
     }
+    
+    /**
+     * Handles the GET request to display a single content detail page.
+     * This method is changed to redirect back to the main dashboard listing.
+     * This is useful if the user tries to navigate directly to the view URL.
+     */
+    @GetMapping("/view/{id}")
+    public String showContentDetail(@PathVariable Long id) {
+        // The AJAX call handles the view count increment via POST, so the GET request 
+        // can simply redirect the user back to the main content list.
+        return "redirect:/dashboard";
+    }
 
-    // --- UPLOAD METHODS (RESTORED) ---
+
+    // --- UPLOAD METHODS ---
 
     /**
      * Handles the GET request to display the content upload form.
