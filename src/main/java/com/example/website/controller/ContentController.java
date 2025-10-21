@@ -99,14 +99,14 @@ public class ContentController {
         } catch (IllegalStateException e) {
             ra.addFlashAttribute("errorMessage", e.getMessage());
         }
-        return "redirect:/content/dashboard";
+        return "redirect:/dashboard";
     }
 
     // ------------------- View -------------------
     @PostMapping("/view/{id}")
     public String incrementView(@PathVariable Long id) {
         contentService.incrementViews(id);
-        return "redirect:/content/dashboard";
+        return "redirect:/dashboard";
     }
 
     // ------------------- Comment -------------------
@@ -118,13 +118,13 @@ public class ContentController {
             content.setComments((existing == null || existing.isEmpty()) ? comment : existing + "\n" + comment);
             contentService.saveContent(content, null); // file = null because only updating metadata
         }
-        return "redirect:/content/dashboard";
+        return "redirect:/dashboard";
     }
 
     // ------------------- Delete -------------------
     @PostMapping("/delete/{id}")
     public String deleteContent(@PathVariable Long id) {
         contentService.delete(id);
-        return "redirect:/content/dashboard";
+        return "redirect:/dashboard";
     }
 }
