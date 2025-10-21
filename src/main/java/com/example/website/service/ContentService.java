@@ -163,4 +163,9 @@ public class ContentService {
         content.setViews(content.getViews() + 1);
         repo.save(content);
     }
+
+	public void toggleLike(Long id, Long userId) {
+		// TODO Auto-generated method stub
+		
+	}
 }
