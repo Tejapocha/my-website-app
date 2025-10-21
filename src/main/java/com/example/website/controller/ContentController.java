@@ -4,6 +4,7 @@ import com.example.website.model.Content;
 import com.example.website.service.CloudinaryService;
 import com.example.website.service.ContentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -102,11 +103,27 @@ public class ContentController {
         return "redirect:/dashboard";
     }
 
-    // ------------------- View -------------------
+    // ------------------- View (For External Sharing Links - FIX 1) -------------------
+    /**
+     * Handles browser GET requests when a user clicks a shared link like /view/16.
+     * It prevents the 405 error by simply redirecting to the main dashboard.
+     */
+    @GetMapping("/view/{id}")
+    public String handleExternalView(@PathVariable Long id) {
+        return "redirect:/dashboard"; 
+    }
+
+    // ------------------- View (For Internal JS AJAX POST - FIX 2) -------------------
+    /**
+     * Handles the AJAX POST request from the JavaScript to increment the view count.
+     * Returns a simple OK response instead of a redirect.
+     */
     @PostMapping("/view/{id}")
-    public String incrementView(@PathVariable Long id) {
+    @ResponseBody // Tells Spring to return the result directly in the body, not resolve a view
+    public ResponseEntity<Void> incrementView(@PathVariable Long id) {
         contentService.incrementViews(id);
-        return "redirect:/dashboard";
+        // Returns a clean 200 OK status to the JavaScript fetch call.
+        return ResponseEntity.ok().build(); 
     }
 
     // ------------------- Comment -------------------
