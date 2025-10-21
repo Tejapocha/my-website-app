@@ -5,13 +5,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity; // 💡 Recommended to include
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebSecurity // 💡 Recommended annotation
+@EnableWebSecurity
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
@@ -25,37 +25,47 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints (Login, Register, Static Files)
-                .requestMatchers("/login", "/register", "/css/**", "/js/**", "/uploads/**", "/images/**").permitAll()
-
-                // 🟢 FIX: Allow access to all standard dashboard/menu routes for authenticated users
-                // This covers: /dashboard, /most-viewed, /most-liked, /celebrity-videos, /about
-                // It also covers all interaction routes: /content/like/{id}, /content/comment/{id}, /content/view/{id}
+                // 1. PUBLIC ACCESS (Viewers can see all content pages without login)
+                // This is correct based on your requirement.
                 .requestMatchers(
-                    "/dashboard", 
-                    "/most-viewed", 
-                    "/most-liked", 
-                    "/celebrity-videos", 
+                    "/", // Root access
+                    "/dashboard",
+                    "/most-viewed",
+                    "/most-liked",
+                    "/celebrity-videos",
                     "/about",
-                    "/content/**" // General content interactions (like, view, comment)
+                    "/view/**" // Allows access to the /view/{id} redirect/AJAX endpoint
+                ).permitAll()
+                
+                // 2. AUTHENTICATED ACCESS (Logged-in user required for interaction)
+                // Liking and commenting requires a user ID, so only logged-in users can do this.
+                .requestMatchers(
+                    "/like/**",      // /like/{id}
+                    "/comment/**"    // /comment/{id}
                 ).authenticated()
 
-                // Only ADMIN can upload or delete content
-                .requestMatchers("/upload", "/content/delete/**").hasRole("ADMIN")
-
-                // 🟢 FIX: Any request that hasn't been explicitly allowed or protected is caught here.
-                // We use .anyRequest().authenticated() to ensure a user must log in for anything else.
-                .anyRequest().authenticated() // Ensures all unlisted pages are protected
+                // 3. ADMIN ACCESS (Upload and Delete)
+                // Only users with the ADMIN role can access these critical endpoints.
+                .requestMatchers(
+                    "/upload", 
+                    "/delete/**"     // /delete/{id}
+                ).hasRole("ADMIN")
+                
+                // Public Endpoints (Login, Register, Static Files)
+                .requestMatchers("/login", "/register", "/css/**", "/js/**", "/uploads/**", "/images/**").permitAll()
+                
+                // Ensures all unlisted pages are protected by default
+                .anyRequest().authenticated()
             )
 
-            // ✅ Custom Login Page
+            // Custom Login Page
             .formLogin(form -> form
                 .loginPage("/login")
                 .defaultSuccessUrl("/dashboard", true)
                 .permitAll()
             )
 
-            // ✅ Logout Configuration
+            // Logout Configuration
             .logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout")
@@ -65,7 +75,7 @@ public class SecurityConfig {
                 .permitAll()
             )
 
-            // ✅ Optional: Disable CSRF for local testing (Revert/Configure for production)
+            // Disable CSRF for simpler development. Reconfigure for production!
             .csrf(csrf -> csrf.disable());
 
         return http.build();
@@ -80,8 +90,8 @@ public class SecurityConfig {
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService); // Connects to your custom user fetch logic
-        provider.setPasswordEncoder(passwordEncoder()); // Uses the secure password encoder
+        provider.setUserDetailsService(userDetailsService); 
+        provider.setPasswordEncoder(passwordEncoder()); 
         return provider;
     }
 }
