@@ -25,36 +25,34 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-                // 1. PUBLIC ACCESS (Viewers can see all content pages without login)
-                // This is correct based on your requirement.
+                // 1. PUBLIC ACCESS (Viewers can see content AND interact without login)
+                // FIX: /like/** and /comment/** are moved here to allow unauthenticated interaction.
                 .requestMatchers(
-                    "/", // Root access
+                    "/", // Root URL
                     "/dashboard",
                     "/most-viewed",
                     "/most-liked",
                     "/celebrity-videos",
                     "/about",
-                    "/view/**" // Allows access to the /view/{id} redirect/AJAX endpoint
+                    "/view/**", // For shared links
+                    "/like/**",      // Public LIKING
+                    "/comment/**",   // Public COMMENTING
+                    "/login", 
+                    "/register", 
+                    "/css/**", 
+                    "/js/**", 
+                    "/uploads/**", 
+                    "/images/**" // Static/Public files
                 ).permitAll()
                 
-                // 2. AUTHENTICATED ACCESS (Logged-in user required for interaction)
-                // Liking and commenting requires a user ID, so only logged-in users can do this.
-                .requestMatchers(
-                    "/like/**",      // /like/{id}
-                    "/comment/**"    // /comment/{id}
-                ).authenticated()
-
-                // 3. ADMIN ACCESS (Upload and Delete)
+                // 2. ADMIN ACCESS (Upload and Delete)
                 // Only users with the ADMIN role can access these critical endpoints.
                 .requestMatchers(
                     "/upload", 
                     "/delete/**"     // /delete/{id}
                 ).hasRole("ADMIN")
                 
-                // Public Endpoints (Login, Register, Static Files)
-                .requestMatchers("/login", "/register", "/css/**", "/js/**", "/uploads/**", "/images/**").permitAll()
-                
-                // Ensures all unlisted pages are protected by default
+                // 3. FALLBACK: Ensures all unlisted pages are protected by default
                 .anyRequest().authenticated()
             )
 

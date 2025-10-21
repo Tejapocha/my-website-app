@@ -1,9 +1,9 @@
 package com.example.website.service;
 
 import com.example.website.model.Content;
-import com.example.website.model.Like; 
+import com.example.website.model.Like;
 import com.example.website.repository.ContentRepository;
-import com.example.website.repository.LikeRepository; 
+import com.example.website.repository.LikeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,9 +12,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile; // ❗ NEW IMPORT
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException; // ❗ NEW IMPORT
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,8 +24,8 @@ public class ContentService {
     @Autowired
     private ContentRepository repo;
 
-    @Autowired 
-    private LikeRepository likeRepo; 
+    @Autowired
+    private LikeRepository likeRepo;
 
     @Autowired
     private CloudinaryService cloudinaryService;
@@ -80,7 +80,7 @@ public class ContentService {
     // NOTE: This is technically redundant if getPaginated is used, but kept for compatibility.
     public Page<Content> getPaginatedContents(int page) {
         // Correcting to 0-based index for PageRequest, and pageSize=10
-        return repo.findAll(PageRequest.of(page - 1, 10, Sort.by(Sort.Direction.DESC, "id"))); 
+        return repo.findAll(PageRequest.of(page - 1, 10, Sort.by(Sort.Direction.DESC, "id")));
     }
     
     // ✅ Get paginated + searchable results
@@ -150,7 +150,7 @@ public class ContentService {
     
     // 🟢 SECURELY Toggles the like status (LIKE or UNLIKE)
     @Transactional
-    public void toggleLike(Long contentId, Long userId) {
+    public Long toggleLike(Long contentId, Long userId) { // <-- CHANGED RETURN TYPE TO LONG
         
         Content content = repo.findById(contentId)
                 .orElseThrow(() -> new EntityNotFoundException("Content not found with ID: " + contentId));
@@ -159,24 +159,29 @@ public class ContentService {
 
         if (existingLike.isPresent()) {
             likeRepo.delete(existingLike.get());
-            if (content.getLikes() > 0) { 
+            if (content.getLikes() > 0) {
+                // FIX: Use 1 (int) instead of 1L (long)
                 content.setLikes(content.getLikes() - 1);
             }
         } else {
-            Like newLike = new Like(userId, contentId); 
+            Like newLike = new Like(userId, contentId);
             likeRepo.save(newLike);
             
+            // FIX: Use 1 (int) instead of 1L (long)
             content.setLikes(content.getLikes() + 1);
         }
         
-        repo.save(content); 
+        repo.save(content);
+        return Long.valueOf(content.getLikes());
     }
     
     // ✅ Increment view count
-    @Transactional 
+    @Transactional
     public void incrementViews(Long id) {
-        Content content = getById(id); 
+        Content content = getById(id);
+        // FIX: Use 1 (int) instead of 1L (long)
         content.setViews(content.getViews() + 1);
         repo.save(content);
     }
 }
+//Is this fine?

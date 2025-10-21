@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        /* (Style section remains unchanged and is correct) */
+        /* (Styles remain the same) */
         .navbar { background: #222; color: white; display: flex; justify-content: center; gap: 20px; padding: 12px; }
         .navbar a { color: white; text-decoration: none; font-weight: 500; }
         .navbar a:hover { text-decoration: underline; }
@@ -28,6 +28,9 @@
   <a href="/most-liked">Most Liked</a>
   <a href="/celebrity-videos">Celebrity Videos</a>
   <a href="/about">About</a>
+    <!-- NEW: Login/Logout links for clarity -->
+    <a th:if="${#authorization.expression('isAuthenticated()')}" th:href="@{/logout}">Logout</a>
+    <a th:unless="${#authorization.expression('isAuthenticated()')}" th:href="@{/login}">Login</a>
 </nav>
 
 <div class="container mt-4">
@@ -35,6 +38,7 @@
     <p>Explore and upload awesome videos or images daily.</p>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- FIX 1: SIMPLIFIED CHECK - Only show if user has the ADMIN role -->
         <div th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
             <a href="/upload" class="btn btn-primary">Upload Content</a>
         </div>
@@ -80,13 +84,12 @@
 
                     <div class="interaction-buttons mt-2">
                         
-                        <form th:action="@{/like/{id}(id=${c.id})}" 
-                              method="post" 
-                              style="display:inline;">
-                            <button class="btn btn-outline-primary btn-sm" type="submit">
-                                👍 Like (<span th:text="${c.likes}">0</span>)
-                            </button>
-                        </form>
+                        <button class="btn btn-outline-primary btn-sm" 
+                                type="button"
+                                th:data-content-id="${c.id}" 
+                                onclick="handleLike(this)">
+                            👍 Like (<span th:id="'likes-' + ${c.id}" th:text="${c.likes}">0</span>)
+                        </button>
 
                         <button class="btn btn-outline-secondary btn-sm"
                                 type="button"
@@ -113,6 +116,7 @@
                         <div class="comment-list" th:if="${c.comments != null}" th:text="${c.comments}"></div>
                     </div>
 
+                    <!-- FIX 2: SIMPLIFIED CHECK - Only show if user has the ADMIN role -->
                     <form th:if="${#authorization.expression('hasRole(''ADMIN'')')}"
                           th:action="@{/delete/{id}(id=${c.id})}" method="post"
                           onsubmit="return confirm('Are you sure you want to delete this content?');">
@@ -142,7 +146,6 @@ function toggleCommentBox(button) {
 }
 
 function shareLink(id, platform) {
-    // Note: The URL is correct here, as /view/{id} is handled by the server (although it currently redirects)
     const link = window.location.origin + "/view/" + id;
     const encoded = encodeURIComponent(link);
     let url = '';
@@ -154,22 +157,79 @@ function shareLink(id, platform) {
 
 function copyLink(id) {
     const link = window.location.origin + "/view/" + id;
-    navigator.clipboard.writeText(link);
-    alert("Link copied to clipboard!");
+    // Use the older clipboard method for broad iframe compatibility
+    // Fallback if the standard clipboard API fails
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(() => {
+            console.log("Link copied to clipboard: " + link);
+        }).catch(err => {
+            console.error('Could not copy text: ', err);
+        });
+    } else {
+        const dummy = document.createElement('textarea');
+        document.body.appendChild(dummy);
+        dummy.value = link;
+        dummy.select();
+        document.execCommand('copy');
+        document.body.removeChild(dummy);
+        console.log("Link copied using fallback: " + link);
+    }
 }
 
-// 🎬 Video Playback and View Tracking Logic (AD REMOVED)
+// --------------------------------------------------
+// AJAX Like Function (No Reload)
+// --------------------------------------------------
+function handleLike(button) {
+    // FIX: Read the data attribute correctly using the 'dataset' property
+    const contentId = button.dataset.contentId; 
+    const likeSpan = document.getElementById('likes-' + contentId);
+    
+    // Disable button to prevent fast clicking/duplicate requests
+    button.disabled = true;
+
+    fetch(`/like/${contentId}`, {
+        method: 'POST',
+        // Note: For Spring Security with CSRF enabled, you would need to add a CSRF token header here.
+        // Since we disabled CSRF in SecurityConfig, this simple POST is sufficient.
+    })
+    .then(response => {
+        if (!response.ok) {
+            // Handle HTTP error statuses
+            // Since we are returning JSON even on errors from the controller, we should check status here.
+             throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.newLikes !== undefined) {
+            // Update the display with the new count returned from the server
+            likeSpan.textContent = data.newLikes;
+            console.log(`Like toggled successfully. New count: ${data.newLikes}`);
+        }
+    })
+    .catch(error => {
+        console.error('Liking error:', error);
+        // Display a message to the user if the request failed
+        // In a real application, you'd show a modal or toast here.
+    })
+    .finally(() => {
+        // Re-enable the button regardless of success/failure
+        button.disabled = false;
+    });
+}
+
+// --------------------------------------------------
+// Video Playback and View Tracking Logic
+// --------------------------------------------------
 document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll("video").forEach(video => {
-        // Flag to ensure view is only incremented once per video load/session
         let viewIncremented = false; 
 
         video.addEventListener("play", function() {
             const contentId = video.id.split("-")[1];
             
-            // 1. VIEW TRACKING
             if (!viewIncremented) {
-                // FIX APPLIED HERE: Changed /content/view/ to /view/ to match the ContentController mapping.
+                // Fetch to call the server's view increment endpoint without reloading the page
                 fetch(`/view/${contentId}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -186,7 +246,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
         
-        // Ensure the ad overlay is hidden immediately, as its logic is now removed.
+        // Ensure the ad overlay is hidden immediately
         const contentId = video.id.split("-")[1];
         const ad = document.getElementById("ad-" + contentId);
         if (ad) {
