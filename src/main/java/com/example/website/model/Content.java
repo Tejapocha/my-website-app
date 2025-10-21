@@ -21,26 +21,26 @@ public class Content {
     @Column(length = 50)
     private String fileType;
 
-    // ✅ Likes column with default 0
+    // Likes count, default 0
     @Column(nullable = false, columnDefinition = "integer default 0")
-    private int likes = 0;
+    private Integer likes = 0;
 
-    // ✅ View count
+    // Views count, default 0
     @Column(nullable = false, columnDefinition = "integer default 0")
-    private int views = 0;
+    private Integer views = 0;
 
-    // ✅ Comments (optional)
+    // Comments (optional)
     @Column(length = 2000)
     private String comments = "";
 
-    // ✅ Tags (e.g., "sports,funny,celebrity")
+    // Tags (optional)
     @Column(length = 255)
     private String tags = "";
 
-    // ✅ Default constructor
+    // Default constructor
     public Content() {}
 
-    // ✅ Constructor with basic fields
+    // Constructor with basic fields
     public Content(String title, String description, String filePath, String fileType) {
         this.title = title;
         this.description = description;
@@ -52,7 +52,7 @@ public class Content {
         this.tags = "";
     }
 
-    // ✅ Getters and Setters
+    // Getters and setters (Integer types to avoid null issues)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -68,17 +68,17 @@ public class Content {
     public String getFileType() { return fileType; }
     public void setFileType(String fileType) { this.fileType = fileType; }
 
-    public int getLikes() { return likes; }
-    public void setLikes(int likes) { this.likes = likes; }
+    public Integer getLikes() { return likes; }
+    public void setLikes(Integer likes) { this.likes = likes != null ? likes : 0; }
 
-    public int getViews() { return views; }
-    public void setViews(int views) { this.views = views; }
+    public Integer getViews() { return views; }
+    public void setViews(Integer views) { this.views = views != null ? views : 0; }
 
     public String getComments() { return comments; }
-    public void setComments(String comments) { this.comments = comments; }
+    public void setComments(String comments) { this.comments = comments != null ? comments : ""; }
 
     public String getTags() { return tags; }
-    public void setTags(String tags) { this.tags = tags; }
+    public void setTags(String tags) { this.tags = tags != null ? tags : ""; }
 
     @Override
     public String toString() {
@@ -90,8 +90,8 @@ public class Content {
                 ", fileType='" + fileType + '\'' +
                 ", likes=" + likes +
                 ", views=" + views +
-                ", tags='" + tags + '\'' +
                 ", comments='" + comments + '\'' +
+                ", tags='" + tags + '\'' +
                 '}';
     }
 }

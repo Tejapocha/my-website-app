@@ -1,10 +1,8 @@
 package com.example.website.controller;
 
 import com.example.website.model.Content;
+import com.example.website.service.CloudinaryService;
 import com.example.website.service.ContentService;
-// import org.springframework.security.core.annotation.AuthenticationPrincipal;
-// import com.example.website.model.UserPrincipal; 
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,159 +10,121 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.io.File;
-import java.io.IOException;
-
 @Controller
+@RequestMapping("/") // Class-level prefix to avoid collisions
 public class ContentController {
 
     @Autowired
-    private ContentService service;
+    private ContentService contentService;
 
-    // Folder where uploads will be stored (relative to project root)
-    private final String uploadDir = new File("uploads").getAbsolutePath() + File.separator;
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
-    // ✅ Show upload form
-    // Requires ADMIN role via SecurityConfig
+    // ------------------- Upload -------------------
     @GetMapping("/upload")
     public String showUploadForm(Model model) {
         model.addAttribute("content", new Content());
         return "upload";
     }
 
-    // ✅ Handle file upload (image/video only)
-    // Requires ADMIN role via SecurityConfig
     @PostMapping("/upload")
     public String uploadContent(@ModelAttribute Content content,
-                                @RequestParam("file") MultipartFile file) throws IOException {
+                                @RequestParam("file") MultipartFile file,
+                                Model model) {
 
-        if (!file.isEmpty()) {
+        if (file.isEmpty()) {
+            model.addAttribute("errorMessage", "Please select a file to upload.");
+            return "upload";
+        }
+
+        try {
             String fileName = file.getOriginalFilename();
-
-            // Validate allowed file types
             if (fileName == null || !fileName.matches(".*\\.(png|jpg|jpeg|mp4|mov|webm)$")) {
-                throw new IOException("Only PNG, JPG, JPEG, MP4, MOV, and WEBM files are allowed.");
+                model.addAttribute("errorMessage", "Only PNG, JPG, JPEG, MP4, MOV, and WEBM files are allowed.");
+                return "upload";
             }
 
-            // Create upload folder if not exists
-            File uploadFolder = new File(uploadDir);
-            if (!uploadFolder.exists()) {
-                uploadFolder.mkdirs();
-            }
+            String url = cloudinaryService.uploadFile(file);
+            content.setFilePath(url);
 
-            // Save file
-            File dest = new File(uploadDir + fileName); 
-            file.transferTo(dest);
-
-            // Detect file type
             String contentType = file.getContentType();
             if (contentType != null) {
-                if (contentType.startsWith("image/")) {
-                    content.setFileType("image");
-                } else if (contentType.startsWith("video/")) {
-                    content.setFileType("video");
-                } else {
-                    throw new IOException("Unsupported file type: " + contentType);
+                if (contentType.startsWith("image/")) content.setFileType("image");
+                else if (contentType.startsWith("video/")) content.setFileType("video");
+                else {
+                    model.addAttribute("errorMessage", "Unsupported file type: " + contentType);
+                    return "upload";
                 }
             }
 
-            // Set file path for displaying in UI
-            content.setFilePath("/uploads/" + fileName);
-        } else {
-            throw new IOException("Please select a file to upload.");
+            content.setLikes(0);
+            content.setViews(0);
+            content.setComments("");
+            if (content.getTags() == null) content.setTags("");
+
+            contentService.saveContent(content, file);
+
+            model.addAttribute("successMessage", "File uploaded successfully!");
+            return "upload";
+
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Upload failed: " + e.getMessage());
+            return "upload";
         }
-
-        // Default values
-        content.setLikes(0);
-        content.setViews(0);
-        content.setComments("");
-        if (content.getTags() == null) content.setTags("");
-
-        service.save(content);
-        return "redirect:/dashboard";
     }
 
-    // ✅ Dashboard, Home, and Menu Views (Consolidated mapping)
-    // All paths require an authenticated user via SecurityConfig
-    @GetMapping({"/", "/dashboard", "/most-viewed", "/most-liked", "/celebrity-videos"})
-    public String viewDashboard(
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "keyword", required = false) String keyword,
-            Model model) {
+    // ------------------- Dashboard / Home -------------------
+    @GetMapping({"/dashboard", "/most-viewed", "/most-liked", "/celebrity-videos"})
+    public String viewDashboard(@RequestParam(value = "page", defaultValue = "1") int page,
+                                @RequestParam(value = "keyword", required = false) String keyword,
+                                Model model) {
 
-        int pageSize = 10; // show 10 videos per page
-        
-        // Note: The logic here should dynamically call different service methods 
-        // based on the request path (e.g., call service.getMostViewed() for /most-viewed).
-        // For simplicity here, we stick to getPaginated, but the service logic should be improved.
+        int pageSize = 10;
 
         model.addAttribute("page", page);
         model.addAttribute("pageSize", pageSize);
-        model.addAttribute("contents", service.getPaginated(keyword, page, pageSize));
+        model.addAttribute("contents", contentService.getPaginated(keyword, page, pageSize));
         model.addAttribute("keyword", keyword);
-        model.addAttribute("totalPages", service.getTotalPages(keyword, pageSize));
+        model.addAttribute("totalPages", contentService.getTotalPages(keyword, pageSize));
 
         return "dashboard";
     }
 
-    // ✅ Like button (Securely handles one like per user via ContentService/LikeRepository)
-    @PostMapping("/content/like/{id}")
+    // ------------------- Like -------------------
+    @PostMapping("/like/{id}")
     public String likeContent(@PathVariable Long id, RedirectAttributes ra) {
-        
-        // --- AUTHENTICATION/USER ID RETRIEVAL (MANDATORY IN REAL APP) ---
-        // TODO: Replace this hardcoded value with the actual authenticated user's ID
-        Long userId = 1L; 
-        // ----------------------------------------------------------------
-
+        Long userId = 1L; // Replace with actual authenticated user
         try {
-            service.toggleLike(id, userId);
+            contentService.toggleLike(id, userId);
         } catch (IllegalStateException e) {
             ra.addFlashAttribute("errorMessage", e.getMessage());
         }
-
-        return "redirect:/dashboard";
+        return "redirect:/content/dashboard";
     }
 
-    // ✅ Increment views when content is played (Called via AJAX)
-    @PostMapping("/content/view/{id}")
+    // ------------------- View -------------------
+    @PostMapping("/view/{id}")
     public String incrementView(@PathVariable Long id) {
-        // Delegate the logic to the service layer for transactional integrity
-        service.incrementViews(id); 
-        // We redirect to dashboard, although an AJAX call might prefer a 200 OK response.
-        return "redirect:/dashboard";
+        contentService.incrementViews(id);
+        return "redirect:/content/dashboard";
     }
 
-    // ✅ Comment button
-    @PostMapping("/content/comment/{id}")
+    // ------------------- Comment -------------------
+    @PostMapping("/comment/{id}")
     public String commentContent(@PathVariable Long id, @RequestParam("comment") String comment) {
-        Content content = service.getById(id);
-        if (content != null && comment != null && !comment.trim().isEmpty()) {
+        Content content = contentService.getById(id);
+        if (comment != null && !comment.trim().isEmpty()) {
             String existing = content.getComments();
-            if (existing == null || existing.isEmpty()) {
-                content.setComments(comment);
-            } else {
-                content.setComments(existing + "\n" + comment);
-            }
-            service.save(content);
+            content.setComments((existing == null || existing.isEmpty()) ? comment : existing + "\n" + comment);
+            contentService.saveContent(content, null); // file = null because only updating metadata
         }
-        return "redirect:/dashboard";
+        return "redirect:/content/dashboard";
     }
 
-    // ✅ Delete content (and file)
-    // Requires ADMIN role via SecurityConfig
-    @PostMapping("/content/delete/{id}")
+    // ------------------- Delete -------------------
+    @PostMapping("/delete/{id}")
     public String deleteContent(@PathVariable Long id) {
-        Content content = service.getById(id);
-
-        if (content != null && content.getFilePath() != null) {
-            String relativePath = content.getFilePath().replaceFirst("^/uploads/", "");
-            File file = new File(uploadDir + relativePath);
-            if (file.exists()) {
-                file.delete();
-            }
-        }
-     
-        service.delete(id);
-        return "redirect:/dashboard";
+        contentService.delete(id);
+        return "redirect:/content/dashboard";
     }
 }
