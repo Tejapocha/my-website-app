@@ -66,23 +66,7 @@ public class ContentController {
      * Handles the AJAX request for liking content. Returns the new like count as JSON.
      * The @ResponseBody annotation is crucial as it prevents a view name from being returned.
      */
-    @PostMapping("/like/{id}")
-    @ResponseBody // <--- THIS IS THE KEY CHANGE
-    public Map<String, Long> likeContent(@PathVariable Long id) {
-        // NOTE ON USER ID: Since /like/** is publicly accessible, you cannot rely on 
-        // Spring Security to provide the user ID. For a real app, you would use 
-        // session tracking (e.g., cookie or session ID) to prevent duplicate likes.
-        
-        // For now, we will assume a generic user or session ID 1L for the toggle logic.
-        Long anonymousUserId = 1L; 
-
-        // ASSUMPTION: Your service method handles the like/unlike logic and returns the final count.
-        // Replace 'contentService.toggleLike(id, anonymousUserId)' with your actual logic call.
-        Long newLikesCount = contentService.toggleLike(id, anonymousUserId); 
-
-        // Return the map with the expected key 'newLikes' that the JavaScript function needs.
-        return Map.of("newLikes", newLikesCount);
-    }
+    
     
     // --- Comment Operations ---
     

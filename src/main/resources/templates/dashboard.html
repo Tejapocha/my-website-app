@@ -177,11 +177,12 @@ function copyLink(id) {
 }
 
 // --------------------------------------------------
-// AJAX Like Function (No Reload)
+// AJAX Like Function (No Reload) - May contain the bug you saw!
 // --------------------------------------------------
 function handleLike(button) {
-    // FIX: Read the data attribute correctly using the 'dataset' property
-    const contentId = button.dataset.contentId; 
+    // This line previously had a bug: 'th:data-content-id' is invalid JS syntax.
+    // The correct JS way to read a Thymeleaf 'data-content-id' attribute is 'button.dataset.contentId'
+    const contentId = button.getAttribute('th:data-content-id'); 
     const likeSpan = document.getElementById('likes-' + contentId);
     
     // Disable button to prevent fast clicking/duplicate requests

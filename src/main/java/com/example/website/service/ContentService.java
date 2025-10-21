@@ -145,43 +145,22 @@ public class ContentService {
     }
 
     // ----------------------------------------------------------------------
-    // CORE INTERACTION METHODS
+    // CORE INTERACTION METHODS (Contain the original type mismatch errors)
     // ----------------------------------------------------------------------
     
     // 🟢 SECURELY Toggles the like status (LIKE or UNLIKE)
-    @Transactional
-    public Long toggleLike(Long contentId, Long userId) { // <-- CHANGED RETURN TYPE TO LONG
+   
         
-        Content content = repo.findById(contentId)
-                .orElseThrow(() -> new EntityNotFoundException("Content not found with ID: " + contentId));
-
-        Optional<Like> existingLike = likeRepo.findByUserIdAndContentId(userId, contentId);
-
-        if (existingLike.isPresent()) {
-            likeRepo.delete(existingLike.get());
-            if (content.getLikes() > 0) {
-                // FIX: Use 1 (int) instead of 1L (long)
-                content.setLikes(content.getLikes() - 1);
-            }
-        } else {
-            Like newLike = new Like(userId, contentId);
-            likeRepo.save(newLike);
-            
-            // FIX: Use 1 (int) instead of 1L (long)
-            content.setLikes(content.getLikes() + 1);
-        }
-        
-        repo.save(content);
-        return Long.valueOf(content.getLikes());
-    }
+     
+        // THIS LINE ORIGINALLY CAUSED THE ERROR because getLikes() returns Integer
+      //  return content.getLikes(); 
     
     // ✅ Increment view count
     @Transactional
     public void incrementViews(Long id) {
         Content content = getById(id);
-        // FIX: Use 1 (int) instead of 1L (long)
+        // THIS LINE ORIGINALLY CAUSED THE ERROR if 1L was used
         content.setViews(content.getViews() + 1);
         repo.save(content);
     }
 }
-//Is this fine?
