@@ -112,13 +112,13 @@
             <div class="card shadow-sm position-relative h-100">
 
                 <div th:if="${c.fileType == 'image'}">
-                    <img th:src="@{${c.filePath}}" class="card-img-top" alt="Image">
+                    <img th:src="${c.filePath}" class="card-img-top" alt="Image">
                 </div>
 
                 <div th:if="${c.fileType == 'video'}" class="position-relative">
                     <video class="card-img-top" preload="none" controls
                            th:id="'video-' + ${c.id}">
-                        <source th:src="@{${c.filePath}}" type="video/mp4">
+                        <source th:src="${c.filePath}" type="video/mp4">
                     </video>
                     <div class="ad-overlay" th:id="'ad-' + ${c.id}">
                         <p>Advertisement... (5 sec)</p>
