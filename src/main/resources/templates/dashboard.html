@@ -10,7 +10,8 @@
         .navbar { background: #222; color: white; display: flex; justify-content: center; gap: 20px; padding: 12px; }
         .navbar a { color: white; text-decoration: none; font-weight: 500; }
         .navbar a:hover { text-decoration: underline; }
-        .card-img-top { max-height: 300px; object-fit: contain; width: 100%; }
+        /* Adjusted max-height for better thumbnail view */
+        .card-img-top { max-height: 250px; object-fit: cover; width: 100%; cursor: pointer; } 
         .ad-overlay { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.8); color: white; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; font-size: 1.3rem; z-index: 10; }
         .interaction-buttons button { margin-top: 5px; width: 100%; }
         .comment-box { margin-top: 10px; display: none; }
@@ -66,23 +67,31 @@
 
         <div class="col-md-4 mb-3" th:each="c : ${contents}">
             <div class="card shadow-sm position-relative h-100">
-
-                <div th:if="${c.fileType == 'image'}">
-                    <img th:src="${c.filePath}" class="card-img-top" alt="Image">
-                </div>
-
-                <div th:if="${c.fileType == 'video'}" class="position-relative">
-                    <video class="card-img-top" preload="none" controls
-                           th:id="'video-' + ${c.id}">
-                        <source th:src="${c.filePath}" type="video/mp4">
-                    </video>
-                    <div class="ad-overlay" th:id="'ad-' + ${c.id}">
-                        <p>Advertisement... (5 sec)</p>
+                <!-- START: Clickable wrapper for the video/image and title -->
+                <a th:href="@{/view/{id}(id=${c.id})}" target="_blank" 
+                   style="text-decoration: none; color: inherit;">
+                    <div th:if="${c.fileType == 'image'}">
+                        <img th:src="${c.filePath}" class="card-img-top" th:alt="${c.title}">
                     </div>
-                </div>
 
-                <div class="card-body">
-                    <h5 th:text="${c.title}"></h5>
+                    <div th:if="${c.fileType == 'video'}" class="position-relative">
+                        <!-- Removed 'controls' to encourage clicking on the thumbnail -->
+                        <video class="card-img-top" preload="metadata" th:id="'video-' + ${c.id}">
+                            <source th:src="${c.filePath}" type="video/mp4">
+                        </video>
+                        <div class="ad-overlay" th:id="'ad-' + ${c.id}">
+                            <p>Advertisement... (5 sec)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-3 pb-0">
+                        <h5 th:text="${c.title}"></h5>
+                    </div>
+                </a>
+                <!-- END: Clickable wrapper -->
+                
+                <!-- The rest of the card content for interactions -->
+                <div class="card-body pt-0">
                     <p th:text="${c.description}"></p>
                     <p class="text-muted small">ID: <span th:text="${c.id}"></span> | Type: <span th:text="${c.fileType}"></span></p>
 
@@ -95,7 +104,9 @@
                                 type="button"
                                 th:data-content-id="${c.id}" 
                                 onclick="handleLike(this)">
-                            👍 Like (<span th:id="'likes-' + ${c.id}" th:text="${c.likes}">0</span>)
+                            <!-- Conditional class based on liked status from controller -->
+                            <span th:text="${#lists.contains(likedContentIds, c.id)} ? '❤️ Liked' : '👍 Like'"></span> 
+                            (<span th:id="'likes-' + ${c.id}" th:text="${c.likes}">0</span>)
                         </button>
 
                         <button class="btn btn-outline-secondary btn-sm"
@@ -115,13 +126,11 @@
                     </div>
 
                     <div class="comment-box">
-                        <!-- This is a standard form submission which will cause a page reload. -->
                         <form th:action="@{/comment/{id}(id=${c.id})}" method="post">
                             <textarea name="comment" class="form-control mt-2"
                                       placeholder="Write a comment..." required></textarea>
                             <button class="btn btn-sm btn-primary mt-1" type="submit">Post</button>
                         </form>
-                        <!-- Assuming the comment controller will update this section -->
                         <div class="comment-list" th:if="${c.comments != null}" th:text="${c.comments}"></div>
                     </div>
 
@@ -165,9 +174,10 @@ function toggleCommentBox(button) {
 
 // --------------------------------------------------
 // Unique Link Sharing (Uses ID as a keyword for lookup)
+// We keep the old share links pointing to the dashboard search query, 
+// as they are a dedicated sharing mechanism.
 // --------------------------------------------------
 function generateUniqueContentLink(id) {
-    // We use the direct dashboard?keyword=ID approach for sharing.
     return window.location.origin + "/dashboard?keyword=" + id;
 }
 
@@ -184,8 +194,6 @@ function shareLink(id, platform) {
 function copyLink(id) {
     const link = generateUniqueContentLink(id); 
 
-    // Use the older clipboard method for broad iframe compatibility
-    // Fallback if the standard clipboard API fails
     if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(() => {
             console.log("Link copied to clipboard: " + link);
@@ -209,70 +217,31 @@ function copyFallback(link) {
 }
 
 // --------------------------------------------------
-// AJAX Like Function (Modified to force Page Reload)
-// This implements the requested "reloading browser option only" logic.
+// AJAX Like Function (Still forces a Page Reload)
 // --------------------------------------------------
 function handleLike(button) {
     const contentId = button.dataset.contentId; 
     
-    // Disable button immediately
     button.disabled = true;
 
-    // Perform the POST request to the server
     fetch(`/like/${contentId}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     })
     .then(response => {
-        // Reload the page whether the response was OK (200) or a redirect (302/303)
-        // This ensures the updated like count is fetched and displayed.
+        // Force reload to get updated like count and status
         console.log(`Like request sent for ID: ${contentId}. Reloading page...`);
         window.location.reload(); 
     })
     .catch(error => {
-        // If there was a network error (e.g., failed to connect), log it and still try to reload.
         console.error('Liking request failed (network error):', error);
         window.location.reload(); 
     });
-    // button re-enabling is not needed because we force a reload.
 }
 
 // --------------------------------------------------
-// Video Playback and View Tracking Logic
+// Video Playback Logic REMOVED: Now handled on detail page load.
 // --------------------------------------------------
-document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll("video").forEach(video => {
-        let viewIncremented = false; 
-
-        video.addEventListener("play", function() {
-            const contentId = video.id.split("-")[1];
-            
-            if (!viewIncremented) {
-                // Fetch to call the server's view increment endpoint without reloading the page
-                fetch(`/view/${contentId}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-                })
-                .then(response => {
-                    if (response.ok) {
-                        console.log(`View successfully incremented for ID: ${contentId}`);
-                        viewIncremented = true; 
-                    }
-                })
-                .catch(error => {
-                    console.error('Error incrementing view:', error);
-                });
-            }
-        });
-
-        // Ensure the ad overlay is hidden immediately
-        const contentId = video.id.split("-")[1];
-        const ad = document.getElementById("ad-" + contentId);
-        if (ad) {
-             ad.style.display = "none";
-        }
-    });
-});
 </script>
 
 </body>

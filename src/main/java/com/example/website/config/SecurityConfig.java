@@ -44,7 +44,6 @@ public class SecurityConfig {
                     "/uploads/**", 
                     "/images/**" // Static/Public files
                 ).permitAll()
-                
                 // 2. ADMIN ACCESS (Upload and Delete)
                 // Only users with the ADMIN role can access these critical endpoints.
                 .requestMatchers(

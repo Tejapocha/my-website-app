@@ -22,12 +22,27 @@ public class ContentController {
     private ContentService contentService;
 
     // Hardcoded placeholder user ID for demonstration/testing purposes
-    // NOTE: In a real application, this MUST be replaced by a dynamically fetched authenticated user ID.
     private static final Long PLACEHOLDER_USER_ID = 1L;
 
     /**
-     * Shows the main dashboard, supporting standard search/pagination AND filtering by
-     * 'most_liked', 'most_viewed', or 'celebrity'.
+     * Helper to determine the actual user ID.
+     */
+    private Long getUserId(Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            try {
+                // IMPORTANT: This assumes the authentication principal name is a parsable Long ID.
+                return Long.parseLong(authentication.getName());
+            } catch (NumberFormatException e) {
+                System.err.println("Authenticated user principal name is not a number. Falling back to placeholder ID.");
+            }
+        }
+        // Fallback ID for non-authenticated users or unparsable authenticated users
+        return PLACEHOLDER_USER_ID;
+    }
+
+
+    /**
+     * Shows the main dashboard, supporting standard search/pagination AND filtering.
      */
     @GetMapping({"/dashboard", "/"})
     public String showDashboard(Model model,
@@ -35,12 +50,11 @@ public class ContentController {
                                 @RequestParam(defaultValue = "10") int pageSize,
                                 @RequestParam(required = false) String keyword,
                                 @RequestParam(required = false) String filter,
-                                Authentication authentication) { // Added Authentication
+                                Authentication authentication) { 
 
         Page<Content> contentPage;
-        String activeFilterTitle = "Latest Content"; // Default title
+        String activeFilterTitle = "Latest Content"; 
 
-        // 1. Logic to determine which service method to call based on the 'filter' parameter
         if (keyword != null && !keyword.isEmpty()) {
             contentPage = contentService.getPaginated(keyword, page, pageSize);
             activeFilterTitle = "Search Results for: '" + keyword + "'";
@@ -67,20 +81,18 @@ public class ContentController {
             contentPage = contentService.getPaginated(null, page, pageSize);
         }
         
-        // 2. Determine which content is liked by the current user (to persist the visual state)
+        Long currentUserId = getUserId(authentication);
         List<Long> likedContentIds = contentPage.getContent().stream()
-                .filter(content -> contentService.isLikedByUser(content.getId(), PLACEHOLDER_USER_ID))
+                .filter(content -> contentService.isLikedByUser(content.getId(), currentUserId))
                 .map(Content::getId)
                 .collect(Collectors.toList());
         
         model.addAttribute("likedContentIds", likedContentIds);
 
-        // 3. Populate the model
         model.addAttribute("contents", contentPage.getContent());
-        model.addAttribute("currentPage", contentPage.getNumber() + 1); // Convert 0-based index to 1-based
+        model.addAttribute("currentPage", contentPage.getNumber() + 1); 
         model.addAttribute("totalPages", contentPage.getTotalPages());
         model.addAttribute("activeFilterTitle", activeFilterTitle);
-        // Note: 'keyword' is only added if present, preventing it from interfering with filters.
 
         return "dashboard";
     }
@@ -88,13 +100,28 @@ public class ContentController {
 
     /**
      * Handles the GET request to display a single content detail page.
-     * This method is changed to redirect back to the main dashboard listing.
-     * This is useful if the user tries to navigate directly to the view URL.
+     * * FIX: This method is now updated to fetch the specific content and render a 
+     * dedicated detail template (content-detail) instead of redirecting.
      */
     @GetMapping("/view/{id}")
-    public String showContentDetail(@PathVariable Long id) {
-        // The unique link should redirect to the dashboard with the content ID as the keyword
-        return "redirect:/dashboard?keyword=" + id;
+    public String showContentDetail(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
+        try {
+            Content content = contentService.getById(id);
+            model.addAttribute("content", content);
+            
+            // Increment view count immediately when the dedicated page is loaded
+            contentService.incrementViews(id); 
+
+            // Determine if the current (or placeholder) user has liked this specific content
+            Long currentUserId = getUserId(null); // Passing null as Authentication since this method doesn't need full auth check
+            model.addAttribute("isLiked", contentService.isLikedByUser(id, currentUserId));
+
+            // Return the name of the new template
+            return "content-detail"; 
+        } catch (EntityNotFoundException e) {
+            redirectAttributes.addFlashAttribute("error", "Error: Content not found.");
+            return "redirect:/dashboard"; 
+        }
     }
 
 
@@ -148,32 +175,22 @@ public class ContentController {
 
     /**
      * Toggles the like status (LIKE or UNLIKE).
-     * This version is updated to return a JSON response for AJAX updates.
      */
     @PostMapping("/like/{id}")
-    @ResponseBody // FIX 1: Returns data, not a view/redirect
+    @ResponseBody 
     public String toggleLike(@PathVariable Long id, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            // Return an unauthorized error message as JSON
-            return "{\"success\": false, \"error\": \"Login required to like content.\"}";
-        }
-        
-        Long userId = PLACEHOLDER_USER_ID; 
+        Long userId = getUserId(authentication); 
 
         try {
-            // contentService.toggleLike now returns the new count
             int newLikes = contentService.toggleLike(id, userId);
-            // FIX 2: Return success and the new like count as JSON
             return "{\"success\": true, \"newLikes\": " + newLikes + "}";
         } catch (Exception e) {
-            // Return error message as JSON
             return "{\"success\": false, \"error\": \"Error toggling like: " + e.getMessage() + "\"}";
         }
     }
 
     /**
      * Handles comment submission for a piece of content.
-     * This method now allows unauthenticated users to comment as "Anonymous Viewer."
      */
     @PostMapping("/comment/{id}")
     public String postComment(@PathVariable Long id,
@@ -181,18 +198,14 @@ public class ContentController {
                               Authentication authentication,
                               RedirectAttributes redirectAttributes) {
 
-        // Determine the username. Authentication is NOT required for commenting.
         String userName;
         if (authentication != null && authentication.isAuthenticated()) {
-            // Use the logged-in username
             userName = authentication.getName(); 
         } else {
-            // Use a default name for viewers
             userName = "Anonymous Viewer";
         }
 
         try {
-            // Assumes ContentService has an addComment method that updates the Content entity
             contentService.addComment(id, userName, comment);
             redirectAttributes.addFlashAttribute("message", "Comment posted successfully!");
         } catch (EntityNotFoundException e) {
@@ -202,13 +215,12 @@ public class ContentController {
             System.err.println("Error posting comment: " + e.getMessage());
         }
 
-        // Redirect back to the dashboard to show the updated content list (and implicitly the new comment)
-        return "redirect:/dashboard";
+        // Redirect back to the content detail page if this was a comment submission
+        return "redirect:/view/" + id;
     }
 
     /**
      * Increments the view count (Used by AJAX in dashboard.html).
-     * The method is annotated with @ResponseBody to return a simple JSON response.
      */
     @PostMapping("/view/{id}")
     @ResponseBody
