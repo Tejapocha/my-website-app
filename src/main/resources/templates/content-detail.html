@@ -24,11 +24,13 @@
 <body>
 
 <div class="container">
-    <a th:href="@{/dashboard}" class="btn-back">← Back to Dashboard</a>
+    ## 1. Back to Home Link
+    
+    <a th:href="@{/dashboard}" class="btn-back">← Back to Home</a>
 
     <div class="video-player">
         <th:block th:if="${content.fileType == 'video'}">
-            <video controls autoplay class="w-full h-auto" th:id="'video-' + ${content.id}">
+            <video controls class="w-full h-auto" th:id="'video-' + ${content.id}">
                 <source th:src="${content.filePath}" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
