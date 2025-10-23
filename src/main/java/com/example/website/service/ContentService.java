@@ -219,10 +219,11 @@ public class ContentService {
         return contentRepository.findAll(spec, pageable);
     }
 
-    // --- NEW FILTERING METHODS (for dashboard filters) ---
+    // --- FILTERING METHODS (for dashboard filters) ---
 
     /**
      * Retrieves a paginated list of content sorted by the number of likes (most liked first).
+     * Used for the "Best Videos" filter.
      */
     public Page<Content> getMostLikedPaginated(int page, int pageSize) {
         // Sort by 'likes' descending
@@ -238,13 +239,20 @@ public class ContentService {
         Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, pageSize, Sort.by("views").descending());
         return contentRepository.findAll(pageable);
     }
+    
     /**
-     * Retrieves a paginated list of content filtered by the tag 'celebrity'.
+     * **NEW METHOD:** Retrieves a paginated list of content filtered by a specific tag 
+     * (used for "Categories" like celebrity, homemade, college).
+     * * @param tag The tag string to filter content by.
+     * @param page The 1-based page number.
+     * @param pageSize The number of items per page.
+     * @return A Page object containing the results.
      */
-    public Page<Content> getCelebrityVideosPaginated(int page, int pageSize) {
+    public Page<Content> getVideosByTagPaginated(String tag, int page, int pageSize) {
         // Sort by ID descending (newest first for the category)
         Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, pageSize, Sort.by("id").descending());
-        // Uses the custom method from ContentRepository
-        return contentRepository.findByTagsContainingIgnoreCase("celebrity", pageable);
+        // Assumes ContentRepository has a method like: 
+        // Page<Content> findByTagsContainingIgnoreCase(String tags, Pageable pageable);
+        return contentRepository.findByTagsContainingIgnoreCase(tag, pageable);
     }
 }

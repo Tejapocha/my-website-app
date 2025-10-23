@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -10,6 +11,7 @@
         .navbar { background: #222; color: white; display: flex; justify-content: center; gap: 20px; padding: 12px; }
         .navbar a { color: white; text-decoration: none; font-weight: 500; }
         .navbar a:hover { text-decoration: underline; }
+        
         /* Adjusted max-height for better thumbnail view */
         .card-img-top { max-height: 250px; object-fit: cover; width: 100%; cursor: pointer; } 
         .ad-overlay { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.8); color: white; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; font-size: 1.3rem; z-index: 10; }
@@ -18,43 +20,59 @@
         .comment-list { margin-top: 5px; font-size: 0.9rem; white-space: pre-wrap; }
         .share-buttons button { margin: 3px; font-size: 0.85rem; }
         .pagination { text-align: center; margin-top: 20px; }
+        
         /* Style for active filter button */
         .filter-active {
             background-color: #0d6efd;
-            color: white;
+            color: white !important;
             border-color: #0d6efd;
+            text-decoration: underline !important;
         }
     </style>
 </head>
 <body>
 
 <nav class="navbar">
-  <a th:href="@{/dashboard}">Home</a>
+  <a th:href="@{/dashboard}" th:classappend="${keyword == null and filter == null and tag == null ? 'filter-active' : ''}">Home</a>
+  
+  <a th:href="@{/dashboard(filter='best_videos')}" th:classappend="${filter == 'best_videos' ? 'filter-active' : ''}">Best Videos</a>
+  
   <a th:href="@{/dashboard(filter='most_viewed')}" th:classappend="${filter == 'most_viewed' ? 'filter-active' : ''}">Most Viewed</a>
-  <a th:href="@{/dashboard(filter='most_liked')}" th:classappend="${filter == 'most_liked' ? 'filter-active' : ''}">Most Liked</a>
-  <a th:href="@{/dashboard(filter='celebrity')}" th:classappend="${filter == 'celebrity' ? 'filter-active' : ''}">Celebrity Videos</a>
+  
+  <div class="dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="categoriesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" th:classappend="${tag != null ? 'filter-active' : ''}">
+      Categories
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="categoriesDropdown">
+      <li><a class="dropdown-item" th:href="@{/dashboard(tag='celebrity')}" th:classappend="${tag == 'celebrity' ? 'filter-active' : ''}">Celebrity Videos</a></li>
+      <li><a class="dropdown-item" th:href="@{/dashboard(tag='homemade')}" th:classappend="${tag == 'homemade' ? 'filter-active' : ''}">Homemade Videos</a></li>
+      <li><a class="dropdown-item" th:href="@{/dashboard(tag='college')}" th:classappend="${tag == 'college' ? 'filter-active' : ''}">College Videos</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" th:href="@{/dashboard}">All Categories</a></li>
+    </ul>
+  </div>
+  
   <a href="/about">About</a>
-    <!-- Login/Logout links for clarity -->
     <a th:if="${#authorization.expression('isAuthenticated()')}" th:href="@{/logout}">Logout</a>
     <a th:unless="${#authorization.expression('isAuthenticated()')}" th:href="@{/login}">Login</a>
 </nav>
 
 <div class="container mt-4">
-    <!-- Updated Heading to show the active filter title from the Controller -->
-    <h3 th:text="${activeFilterTitle}">Welcome to the Dashboard!</h3>
-    <p>Explore and upload awesome videos or images daily.</p>
+    <h3 th:text="${activeFilterTitle}">Welcome to our website!</h3>
+    <p>Explore awesome videos or images daily.</p>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <!-- Upload button -->
         <div th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
             <a href="/upload" class="btn btn-primary">Upload Content</a>
         </div>
 
-        <!-- Search form -->
         <form class="d-flex" th:action="@{/dashboard}" method="get">
             <input class="form-control me-2" type="search" name="keyword"
                    placeholder="Search by title, tags or ID"
                    th:value="${keyword}">
+            <input type="hidden" name="filter" th:value="${filter}">
+            <input type="hidden" name="tag" th:value="${tag}">
+            
             <button class="btn btn-outline-success me-2" type="submit">Search</button>
             <a th:href="@{/dashboard}" class="btn btn-outline-secondary">Clear</a>
         </form>
@@ -67,7 +85,6 @@
 
         <div class="col-md-4 mb-3" th:each="c : ${contents}">
             <div class="card shadow-sm position-relative h-100">
-                <!-- START: Clickable wrapper for the video/image and title -->
                 <a th:href="@{/view/{id}(id=${c.id})}" target="_blank" 
                    style="text-decoration: none; color: inherit;">
                     <div th:if="${c.fileType == 'image'}">
@@ -75,7 +92,6 @@
                     </div>
 
                     <div th:if="${c.fileType == 'video'}" class="position-relative">
-                        <!-- Removed 'controls' to encourage clicking on the thumbnail -->
                         <video class="card-img-top" preload="metadata" th:id="'video-' + ${c.id}">
                             <source th:src="${c.filePath}" type="video/mp4">
                         </video>
@@ -88,9 +104,6 @@
                         <h5 th:text="${c.title}"></h5>
                     </div>
                 </a>
-                <!-- END: Clickable wrapper -->
-                
-                <!-- The rest of the card content for interactions -->
                 <div class="card-body pt-0">
                     <p th:text="${c.description}"></p>
                     <p class="text-muted small">ID: <span th:text="${c.id}"></span> | Type: <span th:text="${c.fileType}"></span></p>
@@ -104,7 +117,6 @@
                                 type="button"
                                 th:data-content-id="${c.id}" 
                                 onclick="handleLike(this)">
-                            <!-- Conditional class based on liked status from controller -->
                             <span th:text="${#lists.contains(likedContentIds, c.id)} ? '❤️ Liked' : '👍 Like'"></span> 
                             (<span th:id="'likes-' + ${c.id}" th:text="${c.likes}">0</span>)
                         </button>
@@ -134,7 +146,6 @@
                         <div class="comment-list" th:if="${c.comments != null}" th:text="${c.comments}"></div>
                     </div>
 
-                    <!-- Only show if user has the ADMIN role -->
                     <form th:if="${#authorization.expression('hasRole(''ADMIN'')')}"
                           th:action="@{/delete/{id}(id=${c.id})}" method="post"
                           onsubmit="return confirm('Are you sure you want to delete this content?');">
@@ -145,18 +156,15 @@
         </div>
     </div>
 
-    <!-- PAGINATION LINKS - Updated to preserve keyword or filter -->
     <div class="pagination" th:if="${totalPages > 1}">
-        <!-- Previous Button -->
         <a th:if="${currentPage > 1}"
-           th:href="@{/dashboard(page=${currentPage - 1}, keyword=${keyword}, filter=${filter})}"
+           th:href="@{/dashboard(page=${currentPage - 1}, keyword=${keyword}, filter=${filter}, tag=${tag})}"
            class="btn btn-secondary btn-sm">Previous</a>
 
         <span class="mx-3" th:text="'Page ' + ${currentPage} + ' of ' + ${totalPages}"></span>
 
-        <!-- Next Button -->
         <a th:if="${currentPage < totalPages}"
-           th:href="@{/dashboard(page=${currentPage + 1}, keyword=${keyword}, filter=${filter})}"
+           th:href="@{/dashboard(page=${currentPage + 1}, keyword=${keyword}, filter=${filter}, tag=${tag})}"
            class="btn btn-secondary btn-sm">Next</a>
     </div>
 
@@ -174,20 +182,19 @@ function toggleCommentBox(button) {
 
 // --------------------------------------------------
 // Unique Link Sharing (Uses ID as a keyword for lookup)
-// We keep the old share links pointing to the dashboard search query, 
-// as they are a dedicated sharing mechanism.
 // --------------------------------------------------
 function generateUniqueContentLink(id) {
-    return window.location.origin + "/dashboard?keyword=" + id;
+    // Uses the dedicated /view link for better user experience
+    return window.location.origin + "/view/" + id;
 }
 
 function shareLink(id, platform) {
     const link = generateUniqueContentLink(id);
     const encoded = encodeURIComponent(link);
     let url = '';
-    if (platform === 'whatsapp') url = 'https://wa.me/?text=' + encoded;
+    if (platform === 'whatsapp') url = 'https://wa.me/?text=' + 'Check out this video: ' + encoded;
     if (platform === 'facebook') url = 'https://www.facebook.com/sharer/sharer.php?u=' + encoded;
-    if (platform === 'twitter') url = 'https://twitter.com/intent/tweet?url=' + encoded;
+    if (platform === 'twitter') url = 'https://twitter.com/intent/tweet?url=' + encoded + '&text=' + 'Awesome Video!';
     window.open(url, '_blank');
 }
 
@@ -196,7 +203,7 @@ function copyLink(id) {
 
     if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(() => {
-            console.log("Link copied to clipboard: " + link);
+            alert("Link copied to clipboard!");
         }).catch(err => {
             console.error('Could not copy text: ', err);
             copyFallback(link);
@@ -213,15 +220,16 @@ function copyFallback(link) {
     dummy.select();
     document.execCommand('copy');
     document.body.removeChild(dummy);
-    console.log("Link copied using fallback: " + link);
+    alert("Link copied to clipboard!");
 }
 
 // --------------------------------------------------
-// AJAX Like Function (Still forces a Page Reload)
+// AJAX Like Function (Forces a Page Reload via Controller)
 // --------------------------------------------------
 function handleLike(button) {
     const contentId = button.dataset.contentId; 
     
+    // Disable button to prevent double-clicking
     button.disabled = true;
 
     fetch(`/like/${contentId}`, {
@@ -229,8 +237,23 @@ function handleLike(button) {
         headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     })
     .then(response => {
-        // Force reload to get updated like count and status
-        console.log(`Like request sent for ID: ${contentId}. Reloading page...`);
+        // The controller will redirect back to the content-detail page, 
+        // which forces the full refresh.
+        // For the dashboard (this page), we force a reload if the AJAX call completes,
+        // although the controller should ideally handle this via a standard form submit
+        // and redirect, not AJAX if a full reload is required. 
+        // Since the controller is set up to accept a POST and simply return a redirect 
+        // URL for the single view page, this AJAX call *might* not fully refresh the dashboard.
+        
+        // Let's assume for the dashboard, you want a quick visual update or a full page refresh.
+        // Since we are on the dashboard, the controller *should* redirect back to the dashboard,
+        // but because the controller's `/like/{id}` method redirects to `/view/{id}`, 
+        // clicking the like button here will take the user to the single content view.
+        
+        // If you want to stay on the dashboard, the controller's toggleLike method should redirect to:
+        // return "redirect:/dashboard"; 
+        // Let's stick to the controller's logic (which redirects to /view/{id} after like).
+        // Since this is the dashboard, let's change the JS to simply reload this dashboard page after like.
         window.location.reload(); 
     })
     .catch(error => {
@@ -240,9 +263,27 @@ function handleLike(button) {
 }
 
 // --------------------------------------------------
-// Video Playback Logic REMOVED: Now handled on detail page load.
+// Initial View Increment (Not related to the new filters, but included for completeness)
 // --------------------------------------------------
+document.querySelectorAll('a[th\\:href^="/view/"]').forEach(link => {
+    link.addEventListener('click', function(event) {
+        // Only increment views if not in an admin role (optional, for clean view stats)
+        const contentId = this.getAttribute('th:href').split('/').pop();
+        
+        fetch(`/view/${contentId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(response => {
+            // Success response is not critical, just proceed to the link
+        }).catch(error => {
+            console.error("View increment failed:", error);
+        });
+        
+        // Let the default link navigation proceed
+    });
+});
 </script>
 
 </body>
 </html>
+```

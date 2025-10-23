@@ -5,6 +5,8 @@ import com.example.website.service.ContentService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,7 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -50,34 +54,54 @@ public class ContentController {
                                 @RequestParam(defaultValue = "10") int pageSize,
                                 @RequestParam(required = false) String keyword,
                                 @RequestParam(required = false) String filter,
+                                @RequestParam(required = false) String tag, // New parameter for category tags
                                 Authentication authentication) { 
 
         Page<Content> contentPage;
         String activeFilterTitle = "Latest Content"; 
 
         if (keyword != null && !keyword.isEmpty()) {
+            // Search takes precedence
             contentPage = contentService.getPaginated(keyword, page, pageSize);
             activeFilterTitle = "Search Results for: '" + keyword + "'";
             model.addAttribute("keyword", keyword);
         } else if (filter != null && !filter.isEmpty()) {
+            // Sorting filters
             switch (filter.toLowerCase()) {
+                case "best_videos":
                 case "most_liked":
                     contentPage = contentService.getMostLikedPaginated(page, pageSize);
-                    activeFilterTitle = "Most Liked Videos";
+                    activeFilterTitle = "Best Videos (Most Liked)";
                     break;
                 case "most_viewed":
                     contentPage = contentService.getMostViewedPaginated(page, pageSize);
                     activeFilterTitle = "Most Viewed Videos";
                     break;
-                case "celebrity":
-                    contentPage = contentService.getCelebrityVideosPaginated(page, pageSize);
-                    activeFilterTitle = "Celebrity Videos";
-                    break;
                 default:
                     contentPage = contentService.getPaginated(null, page, pageSize);
             }
             model.addAttribute("filter", filter);
+        } else if (tag != null && !tag.isEmpty()) {
+            // Category/Tag filters
+            switch (tag.toLowerCase()) {
+                case "celebrity":
+                    contentPage = contentService.getVideosByTagPaginated("celebrity", page, pageSize);
+                    activeFilterTitle = "Celebrity Videos";
+                    break;
+                case "homemade":
+                    contentPage = contentService.getVideosByTagPaginated("homemade", page, pageSize);
+                    activeFilterTitle = "Homemade Videos";
+                    break;
+                case "college":
+                    contentPage = contentService.getVideosByTagPaginated("college", page, pageSize);
+                    activeFilterTitle = "College Videos";
+                    break;
+                default:
+                    contentPage = contentService.getPaginated(null, page, pageSize);
+            }
+            model.addAttribute("tag", tag);
         } else {
+            // Default latest content
             contentPage = contentService.getPaginated(null, page, pageSize);
         }
         
@@ -100,11 +124,9 @@ public class ContentController {
 
     /**
      * Handles the GET request to display a single content detail page.
-     * * FIX: This method is now updated to fetch the specific content and render a 
-     * dedicated detail template (content-detail) instead of redirecting.
      */
     @GetMapping("/view/{id}")
-    public String showContentDetail(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
+    public String showContentDetail(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes, Authentication authentication) {
         try {
             Content content = contentService.getById(id);
             model.addAttribute("content", content);
@@ -112,11 +134,10 @@ public class ContentController {
             // Increment view count immediately when the dedicated page is loaded
             contentService.incrementViews(id); 
 
-            // Determine if the current (or placeholder) user has liked this specific content
-            Long currentUserId = getUserId(null); // Passing null as Authentication since this method doesn't need full auth check
+            // Determine if the current user has liked this specific content
+            Long currentUserId = getUserId(authentication); 
             model.addAttribute("isLiked", contentService.isLikedByUser(id, currentUserId));
 
-            // Return the name of the new template
             return "content-detail"; 
         } catch (EntityNotFoundException e) {
             redirectAttributes.addFlashAttribute("error", "Error: Content not found.");
@@ -129,7 +150,6 @@ public class ContentController {
 
     /**
      * Handles the GET request to display the content upload form.
-     * Accessible only by ADMIN users via Spring Security.
      */
     @GetMapping("/upload")
     public String showUploadForm(Model model) {
@@ -139,7 +159,6 @@ public class ContentController {
 
     /**
      * Handles the POST request for submitting new content.
-     * Accessible only by ADMIN users via Spring Security.
      */
     @PostMapping("/upload")
     public String uploadContent(@ModelAttribute Content content,
@@ -153,12 +172,10 @@ public class ContentController {
         }
         return "redirect:/dashboard";
     }
-
     // --- INTERACTION METHODS ---
 
     /**
      * Deletes content by ID.
-     * Accessible only by ADMIN users via Spring Security.
      */
     @PostMapping("/delete/{id}")
     public String deleteContent(@PathVariable Long id, RedirectAttributes redirectAttributes) {
@@ -174,18 +191,28 @@ public class ContentController {
     }
 
     /**
-     * Toggles the like status (LIKE or UNLIKE).
+     * Toggles the like status (LIKE or UNLIKE) and returns JSON for AJAX update.
+     * Used by content-detail.html for non-reloading like updates.
      */
     @PostMapping("/like/{id}")
-    @ResponseBody 
-    public String toggleLike(@PathVariable Long id, Authentication authentication) {
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id, Authentication authentication) {
         Long userId = getUserId(authentication); 
+        Map<String, Object> response = new HashMap<>();
 
         try {
+            // The service method returns the new total like count
             int newLikes = contentService.toggleLike(id, userId);
-            return "{\"success\": true, \"newLikes\": " + newLikes + "}";
+            
+            response.put("success", true);
+            response.put("newLikes", newLikes);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+            
         } catch (Exception e) {
-            return "{\"success\": false, \"error\": \"Error toggling like: " + e.getMessage() + "\"}";
+            System.err.println("Error toggling like: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to toggle like status.");
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -231,5 +258,13 @@ public class ContentController {
         } catch (Exception e) {
             return "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}";
         }
+    }
+    
+    /**
+     * Handles the GET request for the About page.
+     */
+    @GetMapping("/about")
+    public String showAboutPage() {
+        return "about"; // Maps to about.html
     }
 }

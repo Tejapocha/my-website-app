@@ -19,12 +19,12 @@
         }
         .like-btn.liked { color: red; } /* Red color for liked state (❤️) */
         .comments-box { background: #f9f9f9; padding: 15px; border-radius: 6px; white-space: pre-wrap; font-size: 0.95rem; border: 1px solid #eee; max-height: 300px; overflow-y: auto; }
+        .share-buttons button { margin: 3px; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    ## 1. Back to Home Link
     
     <a th:href="@{/dashboard}" class="btn-back">← Back to Home</a>
 
@@ -37,7 +37,7 @@
         </th-block>
         <th:block th:if="${content.fileType == 'image'}">
             <img th:src="${content.filePath}" th:alt="${content.title}" class="w-full h-auto" th:id="'image-' + ${content.id}"/>
-        </th-block>
+        </th:block>
     </div>
     
     <h1 th:text="${content.title}" class="mt-4">Video Title</h1>
@@ -59,6 +59,18 @@
         <span id="like-count">
             <strong th:text="${content.likes}">15</strong> Likes
         </span>
+    </div>
+    
+    <div class="share-buttons mt-3 mb-4">
+        <strong class="me-2">Share:</strong>
+        <button class="btn btn-success btn-sm"
+                th:onclick="|shareLink(${content.id}, 'whatsapp')|">WhatsApp</button>
+        <button class="btn btn-primary btn-sm"
+                th:onclick="|shareLink(${content.id}, 'facebook')|">Facebook</button>
+        <button class="btn btn-info btn-sm text-white"
+                th:onclick="|shareLink(${content.id}, 'twitter')|">Twitter</button>
+        <button class="btn btn-dark btn-sm"
+                th:onclick="|copyLink(${content.id})|" >Copy Link</button>
     </div>
 
     <div class="comments-section mt-4">
@@ -82,14 +94,61 @@
 
 <script>
 // --------------------------------------------------
+// Helper functions for Link Sharing
+// --------------------------------------------------
+function generateUniqueContentLink(id) {
+    return window.location.origin + "/view/" + id;
+}
+
+function shareLink(id, platform) {
+    const link = generateUniqueContentLink(id);
+    const encoded = encodeURIComponent(link);
+    let url = '';
+    if (platform === 'whatsapp') url = 'https://wa.me/?text=' + 'Check out this video: ' + encoded;
+    if (platform === 'facebook') url = 'https://www.facebook.com/sharer/sharer.php?u=' + encoded;
+    if (platform === 'twitter') url = 'https://twitter.com/intent/tweet?url=' + encoded + '&text=' + 'Awesome Video!';
+    window.open(url, '_blank');
+}
+
+// Fallback copy function for execCommand
+function copyFallback(link) {
+    const dummy = document.createElement('textarea');
+    document.body.appendChild(dummy);
+    dummy.value = link;
+    dummy.select();
+    document.execCommand('copy');
+    document.body.removeChild(dummy);
+    console.log("Link copied to clipboard (fallback): " + link);
+    // Use a temporary alert for user feedback since we don't have a toast/modal system
+    // IMPORTANT: In a real app, replace this with a temporary UI element (toast).
+    alert('Link copied to clipboard!'); 
+}
+
+function copyLink(id) {
+    const link = generateUniqueContentLink(id); 
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(() => {
+            console.log("Link copied to clipboard: " + link);
+            alert('Link copied to clipboard!'); 
+        }).catch(err => {
+            console.error('Could not copy text: ', err);
+            copyFallback(link);
+        });
+    } else {
+        copyFallback(link);
+    }
+}
+
+
+// --------------------------------------------------
 // AJAX Like Function for the Detail Page (No Reload)
 // --------------------------------------------------
 function handleLikeDetail(button) {
     const contentId = button.dataset.contentId;
-    // Get the current liked state from the button's data attribute
     let isLiked = button.dataset.isLiked === 'true'; 
     const likeIcon = button.querySelector('#like-icon');
-    const likeCountSpan = document.getElementById('like-count').querySelector('strong');
+    const likeCountStrong = document.getElementById('like-count').querySelector('strong');
     
     button.disabled = true; // Prevent multiple clicks
 
@@ -97,13 +156,21 @@ function handleLikeDetail(button) {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            // Handle HTTP error codes (e.g., 500)
+            return response.json().then(errorData => {
+                throw new Error(errorData.error || 'Server error occurred.');
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            // Update UI immediately
-            likeCountSpan.textContent = data.newLikes;
+            // 1. Update like count
+            likeCountStrong.textContent = data.newLikes;
             
-            // Toggle the liked state
+            // 2. Toggle the liked state (UI update)
             isLiked = !isLiked;
             button.dataset.isLiked = isLiked; // Update the data attribute
             
@@ -115,13 +182,14 @@ function handleLikeDetail(button) {
                 likeIcon.textContent = '🤍'; // Empty heart
             }
         } else {
-            console.error('Error toggling like:', data.error);
-            alert('Failed to update like status: ' + data.error);
+            // This catches success=false in the JSON response
+            console.error('Error toggling like (server reported failure):', data.error);
+            alert('Failed to update like status: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Liking request failed:', error);
-        alert('A network error occurred while updating the like.');
+        alert('A network error or server processing error occurred while updating the like.');
     })
     .finally(() => {
         button.disabled = false; // Re-enable button
