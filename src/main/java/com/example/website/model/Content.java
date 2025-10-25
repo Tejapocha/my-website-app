@@ -1,97 +1,140 @@
 package com.example.website.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
+@Table(name = "content")
 public class Content {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 255, nullable = false)
+    // --- Mandatory Fields (Assuming these are NOT NULL in your DB) ---
+    @Column(nullable = false)
     private String title;
 
-    @Column(length = 500)
-    private String description;
-
-    @Column(length = 255, nullable = false)
+    @Column(nullable = false)
     private String filePath;
 
-    @Column(length = 50)
+    @Column(nullable = false)
     private String fileType;
 
-    // Likes count, default 0
-    @Column(nullable = false, columnDefinition = "integer default 0")
-    private Integer likes = 0;
+    @Column(nullable = false)
+    private LocalDateTime uploadDate;
 
-    // Views count, default 0
-    @Column(nullable = false, columnDefinition = "integer default 0")
+    @Column(nullable = false)
     private Integer views = 0;
 
-    // Comments (optional)
-    @Column(length = 2000)
-    private String comments = "";
+    @Column(nullable = false)
+    private Integer likes = 0;
 
-    // Tags (optional)
-    @Column(length = 255)
-    private String tags = "";
+    // --- Optional/Other Fields ---
+    @Column(columnDefinition = "TEXT") // Good for potentially long text descriptions
+    private String description;
+    
+    // For searching/filtering
+    private String tags; 
 
-    // Default constructor
+    // 💡 CRITICAL FIX: Relationship for Comments
+    // This defines a One-to-Many relationship where one Content item has many Comments.
+    // cascade = CascadeType.ALL ensures comments are saved/deleted with the content.
+    // orphanRemoval = true ensures comments are deleted if removed from the collection.
+    @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>(); 
+
+    // --- Constructor (Optional, but useful) ---
     public Content() {}
+    
+    // --- Getters and Setters ---
 
-    // Constructor with basic fields
-    public Content(String title, String description, String filePath, String fileType) {
-        this.title = title;
-        this.description = description;
-        this.filePath = filePath;
-        this.fileType = fileType;
-        this.likes = 0;
-        this.views = 0;
-        this.comments = "";
-        this.tags = "";
+    public Long getId() {
+        return id;
     }
 
-    // Getters and setters (Integer types to avoid null issues)
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public String getTitle() {
+        return title;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public String getFilePath() { return filePath; }
-    public void setFilePath(String filePath) { this.filePath = filePath; }
+    public String getDescription() {
+        return description;
+    }
 
-    public String getFileType() { return fileType; }
-    public void setFileType(String fileType) { this.fileType = fileType; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public Integer getLikes() { return likes; }
-    public void setLikes(Integer likes) { this.likes = likes != null ? likes : 0; }
+    public String getFilePath() {
+        return filePath;
+    }
 
-    public Integer getViews() { return views; }
-    public void setViews(Integer views) { this.views = views != null ? views : 0; }
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
 
-    public String getComments() { return comments; }
-    public void setComments(String comments) { this.comments = comments != null ? comments : ""; }
+    public String getFileType() {
+        return fileType;
+    }
 
-    public String getTags() { return tags; }
-    public void setTags(String tags) { this.tags = tags != null ? tags : ""; }
+    public void setFileType(String fileType) {
+        this.fileType = fileType;
+    }
 
-    @Override
-    public String toString() {
-        return "Content{" +
-                "id=" + id +
-                ", title='" + title + '\'' +
-                ", description='" + description + '\'' +
-                ", filePath='" + filePath + '\'' +
-                ", fileType='" + fileType + '\'' +
-                ", likes=" + likes +
-                ", views=" + views +
-                ", comments='" + comments + '\'' +
-                ", tags='" + tags + '\'' +
-                '}';
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public LocalDateTime getUploadDate() {
+        return uploadDate;
+    }
+
+    public void setUploadDate(LocalDateTime uploadDate) {
+        this.uploadDate = uploadDate;
+    }
+
+    public Integer getViews() {
+        return views;
+    }
+
+    public void setViews(Integer views) {
+        this.views = views;
+    }
+
+    public Integer getLikes() {
+        return likes;
+    }
+
+    public void setLikes(Integer likes) {
+        this.likes = likes;
+    }
+
+    // 💡 CRITICAL: Getter for the comments list
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
+    }
+    
+    // Helper method to manage the bidirectional relationship when adding a comment
+    public void addComment(Comment comment) {
+        comments.add(comment);
+        comment.setContent(this); // Assuming your Comment entity has a setContent method
     }
 }

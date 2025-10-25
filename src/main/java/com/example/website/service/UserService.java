@@ -3,6 +3,7 @@ package com.example.website.service;
 import com.example.website.model.User;
 import com.example.website.model.Role;
 import com.example.website.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,28 @@ public class UserService {
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    /**
+     * Retrieves a user by their ID. 
+     * THIS METHOD IS REQUIRED by ContentController for fetching user details.
+     * @param id The ID of the user.
+     * @return The User entity.
+     * @throws EntityNotFoundException if the user is not found.
+     */
+    public User getById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User with ID " + id + " not found."));
+    }
+    
+    /**
+     * Finds a user by their username (typically used for Spring Security login).
+     * @param username The username.
+     * @return An Optional containing the User if found.
+     */
+    public Optional<User> findByUsername(String username) {
+        // Assuming UserRepository has findByUsername method
+        return userRepository.findByUsername(username);
     }
 
     /**
@@ -45,8 +68,13 @@ public class UserService {
         // 3. Save to database
         return userRepository.save(user);
     }
-    
-    // Optional: Check if a user exists by ID
+
+    /**
+     * Finds a user by ID. Renamed from the original to match common naming convention, 
+     * but functionally redundant with getById(Long id).
+     * @param id The ID of the user.
+     * @return An Optional containing the User if found.
+     */
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }

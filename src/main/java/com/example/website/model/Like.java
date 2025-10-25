@@ -1,54 +1,68 @@
 package com.example.website.model;
 
 import jakarta.persistence.*;
+import java.io.Serializable;
 
-/**
- * Represents a single like action taken by a user on a piece of content.
- * The UniqueConstraint ensures a user can only have one like record per content.
- */
+// 💡 NOTE: This entity uses a Composite Primary Key (PK) defined by the LikeId class.
+// This enforces that a user can only 'like' a piece of content once.
+
 @Entity
-@Table(name = "likes", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "content_id"})
-})
-public class Like {
+@Table(name = "likes")
+@IdClass(Like.LikeId.class) // Declares the class for the Composite Primary Key
+public class Like implements Serializable {
+
+    // --- Composite Primary Key Fields ---
+    @Id
+    @Column(name = "content_id")
+    private Long contentId;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "user_id")
+    private Long userId;
+    // ------------------------------------
 
-    // Assuming user authentication is in place, this stores the ID of the user who liked the content.
-    @Column(name = "user_id", nullable = false)
-    private Long userId; 
-
-    // Stores the ID of the content (video/image) that was liked.
-    @Column(name = "content_id", nullable = false)
-    private Long contentId; 
-
-    // Default Constructor
+    // Default constructor for JPA
     public Like() {}
 
-    // Parameterized Constructor
-    public Like(Long userId, Long contentId) {
-        this.userId = userId;
+    // Constructor for creating a new like
+    public Like(Long contentId, Long userId) {
         this.contentId = contentId;
+        this.userId = userId;
     }
+    
+    // --- Inner Class for Composite Primary Key ---
+    // Required by JPA when using multiple fields as a primary key
+    public static class LikeId implements Serializable {
+        private Long contentId;
+        private Long userId;
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+        // Constructors, getters, setters, hashCode, and equals must be implemented
+        public LikeId() {}
+        
+        // standard getters and setters
+        public Long getContentId() { return contentId; }
+        public void setContentId(Long contentId) { this.contentId = contentId; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+        @Override
+        public int hashCode() {
+            return (int) (contentId + userId);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            LikeId other = (LikeId) obj;
+            return contentId.equals(other.contentId) && userId.equals(other.userId);
+        }
+    }
+    
+    // --- Getters and Setters for Like Entity ---
 
     public Long getContentId() { return contentId; }
     public void setContentId(Long contentId) { this.contentId = contentId; }
-    
-    @Override
-    public String toString() {
-        return "Like{" +
-                "id=" + id +
-                ", userId=" + userId +
-                ", contentId=" + contentId +
-                '}';
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 }

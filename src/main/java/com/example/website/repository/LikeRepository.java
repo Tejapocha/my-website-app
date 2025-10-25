@@ -1,20 +1,28 @@
 package com.example.website.repository;
 
 import com.example.website.model.Like;
+import com.example.website.model.Like.LikeId; // Import the inner class
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface LikeRepository extends JpaRepository<Like, Long> {
+public interface LikeRepository extends JpaRepository<Like, LikeId> {
 
     /**
-     * CRITICAL for "One like per user": Finds a Like record based on the
-     * specific combination of User ID and Content ID.
-     * * @param userId The ID of the authenticated user.
-     * @param contentId The ID of the content being checked.
-     * @return An Optional containing the Like entity if found, or empty otherwise.
+     * Finds a specific Like record by the combination of contentId and userId.
+     * Required for: ContentService.toggleLike() and ContentService.isLikedByUser()
      */
-    Optional<Like> findByUserIdAndContentId(Long userId, Long contentId);
+    Optional<Like> findByContentIdAndUserId(Long contentId, Long userId);
+    
+    /**
+     * 
+     * Retrieves a list of Content IDs that a specific user has liked.
+     * Required for: ContentService.getLikedContentIds()
+     */
+    @Query("SELECT l.contentId FROM Like l WHERE l.userId = :userId")
+    List<Long> findContentIdsByUserId(Long userId);
 }

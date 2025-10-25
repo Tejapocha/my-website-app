@@ -5,7 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.example.website.model.Role;
-import com.example.website.model.User; // 💡 Assuming this is the correct path for User model
+import com.example.website.model.User; 
 import com.example.website.repository.UserRepository;
 
 import java.util.Optional;
@@ -21,39 +21,47 @@ public class AdminUserSetup implements CommandLineRunner {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * Executes logic immediately after the Spring application context has loaded.
-     */
     @Override
     public void run(String... args) {
         final String username = "Teja";
         final String rawPassword = "Teja1!2";
         
+        // 💡 RECOMMENDATION: For production, use an environment variable or config file 
+        // to set a default admin password, not hardcoded.
+
         Optional<User> existingUser = userRepo.findByUsername(username);
 
         if (existingUser.isPresent()) {
-            // ✅ Case 1: User already exists, ensure they have the ADMIN role and correct password
             User user = existingUser.get();
+            boolean needsUpdate = false;
             
-            // Check if the user is already ADMIN to avoid unnecessary DB write
-            if (user.getRole() != Role.ADMIN || !passwordEncoder.matches(rawPassword, user.getPassword())) {
+            // Check for correct role
+            if (user.getRole() != Role.ADMIN) {
                 user.setRole(Role.ADMIN);
+                needsUpdate = true;
+            }
+            
+            // Check for correct password (only update if it's incorrect)
+            if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
                 user.setPassword(passwordEncoder.encode(rawPassword));
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
                 userRepo.save(user);
-                System.out.println("Admin user '" + username + "' updated successfully. 🛠️");
+                System.out.println("Admin user '" + username + "' updated successfully (Role and/or Password). 🛠️");
             } else {
                 System.out.println("Admin user '" + username + "' already configured. Skipping. 🚀");
             }
             
         } else {
-            // 🛑 Case 2: User does not exist, so CREATE them
+            // Case: User does not exist, so CREATE them
             User newAdmin = new User();
             newAdmin.setUsername(username);
-            newAdmin.setPassword(passwordEncoder.encode(rawPassword)); // Store the HASHED password
+            newAdmin.setPassword(passwordEncoder.encode(rawPassword)); 
             newAdmin.setRole(Role.ADMIN);
-            
-            // 💡 Assuming your User model also requires an email/name, you should set them here:
-            // newAdmin.setEmail("teja@admin.com");
+            newAdmin.setEmail("teja@admin.com"); // Added default email
+            newAdmin.setName("Teja Admin"); // Added default name
             
             userRepo.save(newAdmin);
             System.out.println("Admin user '" + username + "' created successfully! 🎉");

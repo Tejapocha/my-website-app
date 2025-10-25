@@ -24,7 +24,6 @@ public class UserController {
     public String showLoginPage() {
         return "login"; 
     }
-
     // ✅ 2. Show Registration Form
     @GetMapping("/register")
     public String showRegistrationForm(Model model) {

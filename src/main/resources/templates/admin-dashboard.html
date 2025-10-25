@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --dark-blue: #1D3557;
+            --light-pink: #FADDE1;
+            --accent-blue: #457B9D;
+        }
+        body { background-color: #f8f9fa; }
+        .container { max-width: 1000px; margin-top: 30px; }
+        .card-upload { border-color: var(--dark-blue); border-width: 2px; }
+        .card-header { background-color: var(--dark-blue); color: white; }
+        .btn-primary {
+            background-color: var(--dark-blue) !important;
+            border-color: var(--dark-blue) !important;
+        }
+        .table-striped > tbody > tr:nth-of-type(odd) {
+            background-color: var(--light-pink);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="text-secondary">Content Management Portal</h1>
+        <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+            <i class="fas fa-eye me-1"></i> View Public Dashboard
+        </a>
+    </div>
+
+    <!-- Alert Messages -->
+    <div th:if="${uploadSuccess}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${uploadSuccess}">Content uploaded/deleted successfully!</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${uploadError}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${uploadError}">An error occurred.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Upload Content Form Card -->
+    <div class="card card-upload mb-5">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-upload me-2"></i> Upload New Content</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/admin/upload}" th:object="${content}" method="post" enctype="multipart/form-data">
+                
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title</label>
+                    <input type="text" th:field="*{title}" class="form-control" required/>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea th:field="*{description}" class="form-control" rows="3" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="tags" class="form-label">Tags (Comma-separated, e.g., celebrity,homemade)</label>
+                    <input type="text" th:field="*{tags}" class="form-control" placeholder="e.g., celebrity, homemade, college"/>
+                </div>
+
+                <div class="mb-3">
+                    <label for="file" class="form-label">File (Video or Image)</label>
+                    <input type="file" name="file" class="form-control" required/>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mt-3">
+                    <i class="fas fa-paper-plane me-2"></i> Submit Content
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Content Management Table -->
+    <h2 class="text-secondary mb-3"><i class="fas fa-list-alt me-2"></i> Existing Content</h2>
+    <div th:if="${contents.isEmpty()}" class="alert alert-info">No content has been uploaded yet.</div>
+    
+    <div th:unless="${contents.isEmpty()}" class="table-responsive">
+        <table class="table table-striped table-hover table-bordered">
+            <thead class="bg-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Views</th>
+                    <th>Likes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="c : ${contents}">
+                    <td th:text="${c.id}">1</td>
+                    <td>
+                        <a th:href="@{/view/{id}(id=${c.id})}" th:text="${c.title}" target="_blank">Sample Title</a>
+                    </td>
+                    <td th:text="${c.fileType}">video</td>
+                    <td th:text="${c.views}">100</td>
+                    <td th:text="${c.likes}">15</td>
+                    <td>
+                        <!-- Edit Button (Placeholder) -->
+                        <a th:href="@{/admin/edit/{id}(id=${c.id})}" class="btn btn-sm btn-warning me-2" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <!-- Delete Button -->
+                        <a th:href="@{/admin/delete/{id}(id=${c.id})}" 
+   class="btn btn-sm btn-danger" 
+   title="Delete"
+   th:onclick="|return confirm('Are you sure you want to delete content ID: ' + ${c.id} + '?');|">
+    <i class="fas fa-trash-alt"></i>
+</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

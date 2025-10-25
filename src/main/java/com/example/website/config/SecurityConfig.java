@@ -25,33 +25,34 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-                // 1. PUBLIC ACCESS (Viewers can see content AND interact without login)
-                // FIX: /like/** and /comment/** are moved here to allow unauthenticated interaction.
+                // 1. PUBLIC ACCESS (Unrestricted)
                 .requestMatchers(
                     "/", // Root URL
                     "/dashboard",
-                    "/most-viewed",
-                    "/most-liked",
-                    "/celebrity-videos",
                     "/about",
-                    "/view/**", // For shared links
-                    "/like/**",      // Public LIKING
-                    "/comment/**",   // Public COMMENTING
-                    "/login", 
-                    "/register", 
-                    "/css/**", 
-                    "/js/**", 
-                    "/uploads/**", 
-                    "/images/**" // Static/Public files
+                    "/view/**",     // Detail page views
+                    "/register",
+                    "/css/**",
+                    "/js/**",
+                    "/uploads/**",
+                    "/images/**"    // Static/Public files
                 ).permitAll()
-                // 2. ADMIN ACCESS (Upload and Delete)
-                // Only users with the ADMIN role can access these critical endpoints.
-                .requestMatchers(
-                    "/upload", 
-                    "/delete/**"     // /delete/{id}
-                ).hasRole("ADMIN")
                 
-                // 3. FALLBACK: Ensures all unlisted pages are protected by default
+                // 2. AUTHENTICATED ACCESS (Login Required for Interaction)
+                // Liking and Commenting now require a logged-in user.
+                .requestMatchers(
+                    "/like/**",     
+                    "/comment/**"  
+                ).authenticated() // 💡 CRITICAL: Only authenticated users can like/comment
+                
+                // 3. ADMIN ACCESS (Only ADMIN role can access)
+                .requestMatchers(
+                    "/admin/dashboard", // 💡 ADDED: Admin dashboard is admin-only
+                    "/admin/upload",
+                    "/admin/delete/**" 
+                ).hasRole("ADMIN")
+
+                // 4. FALLBACK: Any other request (unlisted or internal APIs) requires authentication
                 .anyRequest().authenticated()
             )
 
@@ -80,15 +81,14 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // BCrypt is the standard, secure password hashing algorithm
         return new BCryptPasswordEncoder();
     }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService); 
-        provider.setPasswordEncoder(passwordEncoder()); 
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 }

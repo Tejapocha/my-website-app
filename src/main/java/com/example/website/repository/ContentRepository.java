@@ -1,8 +1,11 @@
 package com.example.website.repository;
 
 import com.example.website.model.Content;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
@@ -12,39 +15,46 @@ import java.util.List;
 @Repository
 public interface ContentRepository extends JpaRepository<Content, Long>, JpaSpecificationExecutor<Content> {
 
-    // Search (for both title and description) - Unpaginated
-    List<Content> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
-
-    // ✅ Paginated search (Note: This is technically redundant now that JpaSpecificationExecutor is used
-    // and the service handles all searching via Specification, but it's kept for legacy/direct use.)
-    Page<Content> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description, Pageable pageable);
-
-    // ✅ Count results for pagination (Similarly redundant, but kept)
-    long countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
-
-    // ✅ Top 10 Most Liked
-    List<Content> findTop10ByOrderByLikesDesc();
-
-    // ✅ Top 10 Most Viewed
-    List<Content> findTop10ByOrderByViewsDesc();
-
-    // ----------------------------------------------------------------------
-    // 💡 NEW METHOD for Tag-Based Filtering (e.g., "Celebrity Videos")
-    // ----------------------------------------------------------------------
+    // --- Search & Filtering Methods (Used by ContentService) ---
 
     /**
-     * Finds content where the 'tags' string contains the specified keyword (tag).
-     * Useful for filtering by category (e.g., tag="celebrity").
-     * @param tagKeyword The specific tag to search for (e.g., "celebrity").
-     * @param pageable Pagination and sorting information.
-     * @return A Page of Content matching the tag.
+     * Finds content by matching the title (used for the general search/keyword filter).
+     * The service combines this with the findAll(Pageable) for the final result.
+     */
+    Page<Content> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+    
+    /**
+     * Finds content where the 'tags' string contains the specified keyword (used for the tag filter).
      */
     Page<Content> findByTagsContainingIgnoreCase(String tagKeyword, Pageable pageable);
 
+    // --- Interaction Methods ---
+
     /**
-     * Counts the total number of records matching a specific tag for pagination.
-     * @param tagKeyword The specific tag to search for.
-     * @return The count of matching Content records.
+     * REQUIRED FOR incrementViews(): Updates the view count for a given content ID.
      */
+    @Transactional
+    @Modifying
+    @Query("UPDATE Content c SET c.views = c.views + 1 WHERE c.id = :contentId")
+    void incrementViews(Long contentId);
+
+   // --- Legacy / Unpaginated Methods (Optional but kept for completeness) ---
+    
+    // Search (for both title and description) - Unpaginated
+    List<Content> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
+
+    // Paginated search (kept for flexibility)
+    Page<Content> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description, Pageable pageable);
+
+    // Count results for pagination (kept for flexibility)
+    long countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
+
+    // Count by Tag (kept for flexibility)
     long countByTagsContainingIgnoreCase(String tagKeyword);
+    
+    // Top 10 Most Liked
+    List<Content> findTop10ByOrderByLikesDesc();
+
+    // Top 10 Most Viewed
+    List<Content> findTop10ByOrderByViewsDesc();
 }

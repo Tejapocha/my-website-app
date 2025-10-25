@@ -10,41 +10,32 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Must be unique for login (primary identifier)
     @Column(unique = true, nullable = false)
     private String username;
 
-    // Must store the HASHED password
-    @Column(nullable = false, length = 60) // 💡 Hashed passwords (BCrypt) require a length of 60
+    @Column(nullable = false, length = 60)
     private String password;
 
-    // 🟢 ADDED: Email field for account recovery and profile
     @Column(unique = true, nullable = true)
     private String email; 
     
-    // 🟢 ADDED: Name field for profile display
     private String name; 
 
-    // 💡 FIX 1: Default role should be USER, not ADMIN.
-    // The ADMIN role should only be assigned explicitly via initial setup (AdminUserSetup) or migration.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER; 
 
-    // Default Constructor (Required by JPA)
-    public User() {}
-
-    // Parameterized Constructor for registration (excluding ID)
-    public User(String username, String password, String email, String name, Role role) {
-        this.username = username;
-        this.password = password; // Should be the HASHED password
-        this.email = email;
-        this.name = name;
-        this.role = role;
+    // Default Constructor (Ensures non-null defaults for new entities)
+    public User() {
+        this.username = "";
+        this.password = "";
+        this.email = ""; // Default empty string or null if allowed
+        this.name = "";  // Default empty string or null if allowed
+        this.role = Role.USER;
     }
-
-
-    // Getters and setters
+    // ... (rest of the code is unchanged)
+    
+    // Getters and setters (omitted for brevity, assume they are correct)
     
     public Long getId() { return id; }
     
@@ -52,7 +43,6 @@ public class User {
     public void setUsername(String username) { this.username = username; }
     
     public String getPassword() { return password; }
-    // ⚠️ CRITICAL SECURITY NOTE: This setter should ONLY be called with an encoded password!
     public void setPassword(String password) { this.password = password; } 
     
     public String getEmail() { return email; }

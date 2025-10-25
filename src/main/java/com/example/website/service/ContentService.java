@@ -1,258 +1,207 @@
 package com.example.website.service;
 
 import com.example.website.model.Content;
-import com.example.website.model.Like;
+import com.example.website.model.Like; // Assuming you have a Like entity
+import com.example.website.model.Comment; // Assuming you have a Comment entity
 import com.example.website.repository.ContentRepository;
-import com.example.website.repository.LikeRepository;
+import com.example.website.repository.LikeRepository; // Assuming this repository exists
+import com.example.website.repository.CommentRepository; // Assuming this repository exists
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 public class ContentService {
 
-    @Autowired
-    private ContentRepository contentRepository;
+    // Final fields using constructor injection (preferred over field @Autowired)
+    private final ContentRepository contentRepository;
+    private final CloudinaryService cloudinaryService; // <--- NEW CLOUDINARY DEPENDENCY
 
+    // Autowired fields for repositories that don't need to be final
     @Autowired
-    private LikeRepository likeRepository;
-
+    private LikeRepository likeRepository; 
+    
     @Autowired
-    private CloudinaryService cloudinaryService;
+    private CommentRepository commentRepository; 
 
-    // Helper to determine file type from MIME type
-    private String getFileType(String mimeType) {
-        if (mimeType == null) return "unknown";
-        if (mimeType.startsWith("image")) return "image";
-        if (mimeType.startsWith("video")) return "video";
-        return "other";
+    // Constructor Injection for ContentRepository and CloudinaryService
+    public ContentService(ContentRepository contentRepository, CloudinaryService cloudinaryService) {
+        this.contentRepository = contentRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
-    // --- UPLOAD AND CRUD METHODS ---
+    // --- CRUD METHODS ---
 
     /**
-     * Saves new content (Image or Video) to the database and uploads the file to Cloudinary.
-     *
-     * @param content The Content entity containing metadata.
-     * @param file    The MultipartFile to be uploaded.
-     * @return The saved Content entity.
-     * @throws IOException If file processing fails.
+     * Required by: /admin/upload (POST)
+     * Uploads the file to Cloudinary and saves content metadata with the resulting public URL.
      */
-    @Transactional
-    public Content saveContent(Content content, MultipartFile file) throws IOException {
-        String filePath = cloudinaryService.uploadFile(file);
-        content.setFilePath(filePath);
-        content.setFileType(getFileType(file.getContentType()));
-        // Initialize other fields
-        content.setViews(0);
-        content.setLikes(0);
-        content.setComments(""); // Initialize comments as empty string
+    public void saveContent(Content content, MultipartFile file) throws IOException {
+        
+        if (file == null || file.isEmpty()) {
+            throw new IOException("Cannot save content: Uploaded file is missing or empty.");
+        }
+        
+        // 💡 CRITICAL FIX: Upload file to Cloudinary and set the public URL as the filePath
+        String publicUrl = cloudinaryService.uploadFile(file);
+        content.setFilePath(publicUrl);
+        
+        content.setUploadDate(LocalDateTime.now());
+        
+        // Determine file type based on MIME type
+        String contentType = file.getContentType();
+        if (contentType != null) {
+            content.setFileType(contentType.startsWith("video") ? "video" : 
+                                 contentType.startsWith("image") ? "image" : "other");
+        } else {
+             content.setFileType("unknown");
+        }
+        
+        // Ensure initial counts are 0 if the model doesn't handle defaults
+        if (content.getViews() == null) content.setViews(0);
+        if (content.getLikes() == null) content.setLikes(0);
+        
+        contentRepository.save(content);
+    }
 
-        return contentRepository.save(content);
+    // --- VIEW & INTERACTION METHODS ---
+
+    public List<Comment> getCommentsByContentId(Long contentId) {
+        // Ensure the service method call uses the updated repository method name
+        return commentRepository.findByContent_IdOrderByPostDateDesc(contentId);
+    }
+    
+    /**
+     * Retrieves content by ID.
+     */
+    public Content getById(Long id) {
+        return contentRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Content not found with ID: " + id));
     }
 
     /**
      * Deletes content by ID.
-     *
-     * @param id The ID of the content to delete.
      */
-    @Transactional
     public void delete(Long id) {
         if (!contentRepository.existsById(id)) {
-            throw new EntityNotFoundException("Content with ID " + id + " not found.");
+            throw new EntityNotFoundException("Content not found with ID: " + id);
         }
         contentRepository.deleteById(id);
-        // Note: Ideally, you would also call CloudinaryService to delete the file here.
     }
 
     /**
-     * Retrieves content by its ID.
-     *
-     * @param id The ID of the content.
-     * @return The Content entity.
+     * Atomically increments the view count for content.
      */
-    public Content getById(Long id) {
-        return contentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Content with ID " + id + " not found."));
-    }
-
-    // --- INTERACTION METHODS ---
-
-    /**
-     * Increments the view count for a piece of content.
-     *
-     * @param id The ID of the content to update.
-     */
-    @Transactional
-    public void incrementViews(Long id) {
-        Optional<Content> optionalContent = contentRepository.findById(id);
-        if (optionalContent.isPresent()) {
-            Content content = optionalContent.get();
-            content.setViews(content.getViews() + 1);
-            contentRepository.save(content);
-        }
+    public void incrementViews(Long contentId) {
+        // Ideally done with a custom JPA method or native query for thread safety
+        contentRepository.incrementViews(contentId); 
     }
 
     /**
-     * Toggles the like status for a piece of content by a specific user.
-     *
-     * @param contentId The ID of the content.
-     * @param userId    The ID of the user.
-     * @return The new total like count for the content.
+     * Toggles the like status and updates the Content's like count.
+     * @return The new total like count.
      */
-    @Transactional
     public int toggleLike(Long contentId, Long userId) {
         Content content = getById(contentId);
-        Optional<Like> existingLike = likeRepository.findByUserIdAndContentId(userId, contentId);
-
+        Optional<Like> existingLike = likeRepository.findByContentIdAndUserId(contentId, userId);
+        
         if (existingLike.isPresent()) {
-            // Unlike
             likeRepository.delete(existingLike.get());
             content.setLikes(content.getLikes() - 1);
         } else {
-            // Like
-            Like newLike = new Like();
-            newLike.setContentId(contentId);
-            newLike.setUserId(userId);
+            // Note: Your Like model/repository implementation is assumed to handle 
+            // the saving of a Like entity with only contentId and userId.
+            Like newLike = new Like(contentId, userId);
             likeRepository.save(newLike);
             content.setLikes(content.getLikes() + 1);
         }
-
+        
         contentRepository.save(content);
         return content.getLikes();
     }
-
+    
     /**
-     * Adds a new comment to a piece of content.
-     * The comment is appended to the existing comments string.
-     *
-     * @param contentId The ID of the content.
-     * @param userName  The name of the user posting the comment.
-     * @param commentText The text of the comment.
+     * Gets the list of Content IDs liked by a specific user.
      */
-    @Transactional
-    public void addComment(Long contentId, String userName, String commentText) {
-        Content content = getById(contentId);
-
-        String existingComments = content.getComments();
-        
-        // Format the new comment as "[User Name]: Comment Text"
-        String newCommentEntry = String.format("\n%s: %s", userName, commentText.trim());
-
-        // Append the new comment. We trim the existing string before appending
-        // to avoid leading newlines if the comments field was initialized as ""
-        content.setComments((existingComments.trim() + newCommentEntry).trim()); 
-
-        contentRepository.save(content);
-    }
-
-    /**
-     * Checks if a user has liked a specific piece of content.
-     *
-     * @param contentId The ID of the content.
-     * @param userId    The ID of the user.
-     * @return true if the user has liked the content, false otherwise.
-     */
-    public boolean isLikedByUser(Long contentId, Long userId) {
-        return likeRepository.findByUserIdAndContentId(userId, contentId).isPresent();
-    }
-
-    // --- PAGINATION AND SEARCH METHODS ---
-
-    /**
-     * Retrieves a paginated list of all content, optionally filtered by a keyword.
-     *
-     * @param keyword  A search string to filter by title, description, or tags, or the ID.
-     * @param page     The 1-based page number to retrieve.
-     * @param pageSize The number of items per page.
-     * @return A Page object containing the results.
-     */
-    public Page<Content> getPaginated(String keyword, int page, int pageSize) {
-        // Spring Data JPA uses 0-based indexing for PageRequest
-        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, pageSize, Sort.by("id").descending());
-
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return contentRepository.findAll(pageable);
-        }
-
-        // --- Logic to search by Content ID OR text fields ---
-        Long idSearch = null;
-        try {
-            idSearch = Long.parseLong(keyword.trim());
-        } catch (NumberFormatException e) {
-            // The keyword is not a number, proceed with text search
-        }
-
-        // Create a dynamic Specification (query builder)
-        final Long finalIdSearch = idSearch;
-        Specification<Content> spec = (root, query, cb) -> {
-            String likeKeyword = "%" + keyword.trim().toLowerCase() + "%";
-
-            // Predicate for text search (title, description, tags)
-            jakarta.persistence.criteria.Predicate textPredicate = cb.or(
-                    cb.like(cb.lower(root.get("title")), likeKeyword),
-                    cb.like(cb.lower(root.get("description")), likeKeyword),
-                    cb.like(cb.lower(root.get("tags")), likeKeyword)
-            );
-
-            // Predicate for ID search (if keyword is a valid number)
-            if (finalIdSearch != null) {
-                jakarta.persistence.criteria.Predicate idPredicate = cb.equal(root.get("id"), finalIdSearch);
-                // Combine text search OR ID search
-                return cb.or(textPredicate, idPredicate);
-            }
-
-            // Only perform text search
-            return textPredicate;
-        };
-
-        return contentRepository.findAll(spec, pageable);
-    }
-
-    // --- FILTERING METHODS (for dashboard filters) ---
-
-    /**
-     * Retrieves a paginated list of content sorted by the number of likes (most liked first).
-     * Used for the "Best Videos" filter.
-     */
-    public Page<Content> getMostLikedPaginated(int page, int pageSize) {
-        // Sort by 'likes' descending
-        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, pageSize, Sort.by("likes").descending());
-        return contentRepository.findAll(pageable);
-    }
-
-    /**
-     * Retrieves a paginated list of content sorted by the number of views (most viewed first).
-     */
-    public Page<Content> getMostViewedPaginated(int page, int pageSize) {
-        // Sort by 'views' descending
-        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, pageSize, Sort.by("views").descending());
-        return contentRepository.findAll(pageable);
+    public List<Long> getLikedContentIds(Long userId) {
+        // Assuming LikeRepository has a method to fetch only content IDs
+        return likeRepository.findContentIdsByUserId(userId); 
     }
     
     /**
-     * **NEW METHOD:** Retrieves a paginated list of content filtered by a specific tag 
-     * (used for "Categories" like celebrity, homemade, college).
-     * * @param tag The tag string to filter content by.
-     * @param page The 1-based page number.
-     * @param pageSize The number of items per page.
-     * @return A Page object containing the results.
+     * Checks if a user has liked a specific piece of content.
+     */
+    public boolean isLikedByUser(Long contentId, Long userId) {
+        return likeRepository.findByContentIdAndUserId(contentId, userId).isPresent();
+    }
+    
+    /**
+     * Adds a new comment to the content.
+     */
+    public void addComment(Long contentId, String userName, String commentText) {
+        // 1. Fetch the Content entity
+        Content content = contentRepository.findById(contentId)
+            .orElseThrow(() -> new EntityNotFoundException("Content not found."));
+
+        // 2. Create the new Comment entity
+        Comment comment = new Comment();
+        comment.setUserName(userName);
+        comment.setText(commentText);
+        comment.setPostDate(LocalDateTime.now());
+
+        // 3. Manage the bidirectional relationship using the helper in Content model
+        // This sets the content reference on the comment entity: comment.setContent(content);
+        content.addComment(comment);
+
+        // 4. Save the parent (Content) which cascades the save to the child (Comment)
+        contentRepository.save(content);
+    }
+
+    // --- PAGINATION / FILTERING METHODS ---
+    
+    /**
+     * Retrieves content based on keyword or all content, sorted by date.
+     */
+    public Page<Content> getPaginated(String keyword, int page, int pageSize) {
+        PageRequest pageable = PageRequest.of(page - 1, pageSize, Sort.by("uploadDate").descending());
+
+        if (keyword != null && !keyword.isEmpty()) {
+            return contentRepository.findByTitleContainingIgnoreCase(keyword, pageable);
+        } else {
+            return contentRepository.findAll(pageable);
+        }
+    }
+
+    /**
+     * Retrieves content sorted by views.
+     */
+    public Page<Content> getMostViewedPaginated(int page, int pageSize) {
+        PageRequest pageable = PageRequest.of(page - 1, pageSize, Sort.by("views").descending());
+        return contentRepository.findAll(pageable);
+    }
+
+    /**
+     * Retrieves content sorted by likes.
+     */
+    public Page<Content> getMostLikedPaginated(int page, int pageSize) {
+        PageRequest pageable = PageRequest.of(page - 1, pageSize, Sort.by("likes").descending());
+        return contentRepository.findAll(pageable);
+    }
+
+    /**
+     * Retrieves content filtered by tag.
      */
     public Page<Content> getVideosByTagPaginated(String tag, int page, int pageSize) {
-        // Sort by ID descending (newest first for the category)
-        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, pageSize, Sort.by("id").descending());
-        // Assumes ContentRepository has a method like: 
-        // Page<Content> findByTagsContainingIgnoreCase(String tags, Pageable pageable);
+        PageRequest pageable = PageRequest.of(page - 1, pageSize, Sort.by("uploadDate").descending());
         return contentRepository.findByTagsContainingIgnoreCase(tag, pageable);
     }
 }

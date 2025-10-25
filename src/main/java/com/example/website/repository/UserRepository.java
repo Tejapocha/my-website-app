@@ -1,20 +1,37 @@
 package com.example.website.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import com.example.website.model.User;
-import java.util.Optional;
-import org.springframework.stereotype.Repository; // Recommended for clarity
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
+/**
+ * Repository interface for User entity persistence operations.
+ * Spring Data JPA automatically provides CRUD methods.
+ */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
     /**
-     * Finds a user by their username. Used for Spring Security login.
+     * Finds a User entity by their unique username.
+     * Used for login (by Spring Security) and checking for duplicates during registration.
      */
     Optional<User> findByUsername(String username);
-    
+
     /**
-     * Finds a user by their email address. Used to prevent duplicate registrations.
+     * Finds a User entity by their unique email address.
+     * Used for checking for duplicates during registration.
      */
-    Optional<User> findByEmail(String email); 
+    Optional<User> findByEmail(String email);
+
+    /**
+     * Checks if a user with the given username already exists.
+     */
+    boolean existsByUsername(String username);
+
+    /**
+     * Checks if a user with the given email already exists.
+     */
+    boolean existsByEmail(String email);
 }
