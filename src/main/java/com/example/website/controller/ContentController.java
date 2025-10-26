@@ -8,8 +8,8 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication; 
-import org.springframework.security.core.context.SecurityContextHolder; 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -18,47 +18,40 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List; 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 @Controller
 public class ContentController {
 
-    // Best Practice: Use final fields and constructor injection
     private final ContentService contentService;
     private final UserService userService;
 
-    // Constructor Injection (Replaces @Autowired on fields)
     public ContentController(ContentService contentService, UserService userService) {
         this.contentService = contentService;
         this.userService = userService;
     }
 
-    // Define constants for pagination
     private static final int PAGE_SIZE = 9;
 
     /**
      * Helper to get the ID of the currently authenticated user.
-     * WARNING: This uses a redundant DB call. See review notes for the preferred method 
-     * using a CustomUserDetails object.
      * @return The User ID or 0L if anonymous.
      */
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
-            return 0L; 
+            return 0L;
         }
-        
-        // Attempt to extract username and find the ID via service (PERFORMANCE WARNING)
+
         if (auth.getPrincipal() instanceof org.springframework.security.core.userdetails.User springUser) {
-             String username = springUser.getUsername();
-             // Critical: DB call to get the ID from the username
-             return userService.findByUsername(username).map(User::getId).orElse(0L);
+            String username = springUser.getUsername();
+            return userService.findByUsername(username).map(User::getId).orElse(0L);
         }
-        // Fallback for custom principals if not the standard Spring User
-        return 0L; 
+        return 0L;
     }
+
 
     /**
      * Helper to check if the current user has the ADMIN role.
@@ -69,29 +62,28 @@ public class ContentController {
             return false;
         }
         return auth.getAuthorities().stream()
-                   .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                       .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
     // -----------------------------------------------------------------------------------
     // --- PUBLIC DASHBOARD & VIEWING ---
     // -----------------------------------------------------------------------------------
 
-    @GetMapping({"/", "/dashboard"}) 
+    @GetMapping({"/", "/dashboard"})
     public String dashboard(Model model,
                             @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "latest") String filter,
                             @RequestParam Optional<String> tag,
                             @RequestParam Optional<String> keyword,
-                            Authentication authentication) { 
+                            Authentication authentication) {
 
-        // 1. Get User Context (Authenticated or Anonymous)
         Long currentUserId = getCurrentUserId();
-        
-        // 2. Fetch Liked Content IDs (for authenticated users only)
+
+        // Fetch Liked Content IDs (for authenticated users only)
         List<Long> likedContentIds = currentUserId != 0L ? contentService.getLikedContentIds(currentUserId) : List.of();
         model.addAttribute("likedContentIds", likedContentIds);
 
-        // 3. Filtering Logic 
+        // 3. Filtering Logic
         Page<Content> contentPage = switch (filter.toLowerCase()) {
             case "best_videos" -> contentService.getMostLikedPaginated(page, PAGE_SIZE);
             case "most_viewed" -> contentService.getMostViewedPaginated(page, PAGE_SIZE);
@@ -116,28 +108,26 @@ public class ContentController {
         model.addAttribute("filter", filter);
         model.addAttribute("keyword", keyword.orElse(null));
         model.addAttribute("tag", tag.orElse(null));
-        model.addAttribute("isAdmin", isAdmin(authentication)); 
+        model.addAttribute("isAdmin", isAdmin(authentication));
 
         return "dashboard";
     }
 
-    
+
     @GetMapping("/view/{id}")
     public String viewContent(@PathVariable Long id, Model model, Authentication authentication) {
         try {
             Content content = contentService.getById(id);
-            
-            // Get User Context
-            Long currentUserId = getCurrentUserId(); 
-            
+
+            Long currentUserId = getCurrentUserId();
+
             boolean isLiked = currentUserId != 0L && contentService.isLikedByUser(id, currentUserId);
-            
-            // Increment view count
-            contentService.incrementViews(id); 
+
+            contentService.incrementViews(id);
 
             model.addAttribute("content", content);
             model.addAttribute("isLiked", isLiked);
-            model.addAttribute("isAdmin", isAdmin(authentication)); 
+            model.addAttribute("isAdmin", isAdmin(authentication));
 
             return "content-detail";
         } catch (EntityNotFoundException e) {
@@ -151,7 +141,8 @@ public class ContentController {
     // -----------------------------------------------------------------------------------
 
     /**
-     * Toggles the like status. Requires user authentication.
+     * Toggles the like status. Allows unauthenticated (anonymous) access.
+     * FIX: Removed the 401 Unauthorized check for guests.
      */
     @PostMapping("/like/{id}")
     @ResponseBody
@@ -159,45 +150,51 @@ public class ContentController {
         Map<String, Object> response = new HashMap<>();
         Long currentUserId = getCurrentUserId();
         
-        if (currentUserId == 0L) {
-             response.put("success", false);
-             response.put("error", "Authentication required to like content.");
-             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
-        
+        // 🛑 AUTHENTICATION CHECK REMOVED HERE TO ALLOW GUESTS 🛑
+
         try {
+            // Service method must handle userId = 0L (Guest)
             int newLikes = contentService.toggleLike(id, currentUserId);
+            
+            // Determine the *current* liked status. This is mainly accurate for logged-in users.
+            boolean isCurrentlyLiked = currentUserId != 0L 
+                                       ? contentService.isLikedByUser(id, currentUserId) 
+                                       : true; // Set to true here to make the guest button "stick"
+
             response.put("success", true);
             response.put("newLikes", newLikes);
+            response.put("isLiked", isCurrentlyLiked); // CRITICAL: Returns the state to JS
+            
             return ResponseEntity.ok(response);
         } catch (EntityNotFoundException e) {
             response.put("success", false);
             response.put("error", "Content not found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         } catch (Exception e) {
+            System.err.println("Error processing like toggle: " + e.getMessage());
+            e.printStackTrace(); 
             response.put("success", false);
-            response.put("error", "Failed to toggle like status.");
+            response.put("error", "Failed to toggle like status on server.");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-    
+
     /**
-     * Adds a comment. Requires user authentication.
+     * Adds a comment. Requires user authentication (Comment controller remains strict).
      */
     @PostMapping("/comment/{id}")
-    public String addComment(@PathVariable Long id, 
-                             @RequestParam String comment, 
+    public String addComment(@PathVariable Long id,
+                             @RequestParam String comment,
                              RedirectAttributes redirectAttributes) {
-                             
+
         Long currentUserId = getCurrentUserId();
-        
+
         if (currentUserId == 0L) {
             redirectAttributes.addFlashAttribute("commentError", "You must be logged in to comment.");
             return "redirect:/view/" + id;
         }
-        
+
         try {
-            // CRITICAL: Fetch the actual authenticated username to include in the comment
             User currentUser = userService.getById(currentUserId);
             String userName = currentUser.getUsername();
 
@@ -206,50 +203,78 @@ public class ContentController {
         } catch (EntityNotFoundException e) {
             redirectAttributes.addFlashAttribute("commentError", "Failed to find content.");
         } catch (Exception e) {
-             redirectAttributes.addFlashAttribute("commentError", "Failed to post comment due to an error.");
+            redirectAttributes.addFlashAttribute("commentError", "Failed to post comment due to an error.");
         }
 
         return "redirect:/view/{id}";
     }
-    
+
     // -----------------------------------------------------------------------------------
     // --- ADMIN MANAGEMENT ENDPOINTS ---
     // -----------------------------------------------------------------------------------
-    
+
     @GetMapping("/admin/dashboard")
     public String adminDashboard(Model model, Authentication authentication) {
-        // Fetch content for management view
         Page<Content> contentPage = contentService.getPaginated(null, 1, 50);
 
         model.addAttribute("contents", contentPage.getContent());
-        model.addAttribute("content", new Content()); 
-        model.addAttribute("isAdmin", isAdmin(authentication)); 
-        
-        return "admin-dashboard"; 
+        model.addAttribute("content", new Content());
+        model.addAttribute("isAdmin", isAdmin(authentication));
+
+        return "admin-dashboard";
     }
 
     @GetMapping("/admin/upload")
     public String showUploadForm(Model model, Authentication authentication) {
         model.addAttribute("content", new Content());
         model.addAttribute("isAdmin", isAdmin(authentication));
-        return "admin-upload"; 
+        return "admin-upload";
     }
 
     @PostMapping("/admin/upload")
-    public String uploadContent(@ModelAttribute Content content, 
-                                @RequestParam("file") MultipartFile file, 
+    public String uploadContent(@ModelAttribute Content content,
+                                @RequestParam("file") MultipartFile file,
                                 RedirectAttributes redirectAttributes) {
-        
-        // IMPORTANT: The ContentService.saveContent method MUST handle the file I/O 
-        // and set the filePath on the 'content' object before saving to the DB.
+
         try {
             contentService.saveContent(content, file);
             redirectAttributes.addFlashAttribute("message", "Content uploaded successfully!");
         } catch (IOException e) {
-            // IOException indicates a failure in file I/O (disk, permissions, etc.)
             redirectAttributes.addFlashAttribute("error", "File upload failed: " + e.getMessage());
         }
-        
+
+        return "redirect:/admin/dashboard";
+    }
+
+    @GetMapping("/admin/edit/{id}")
+    public String showEditForm(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes, Authentication authentication) {
+        try {
+            Content content = contentService.getById(id);
+
+            model.addAttribute("content", content);
+            model.addAttribute("isAdmin", isAdmin(authentication));
+
+            return "admin-edit";
+        } catch (EntityNotFoundException e) {
+            redirectAttributes.addFlashAttribute("uploadError", "Content ID " + id + " not found for editing.");
+            return "redirect:/admin/dashboard";
+        }
+    }
+
+    @PostMapping("/admin/update")
+    public String updateContent(@ModelAttribute Content content,
+                                @RequestParam(value = "file", required = false) MultipartFile file,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            contentService.updateContent(content, file);
+
+            redirectAttributes.addFlashAttribute("uploadSuccess", "Content ID " + content.getId() + " updated successfully!");
+        } catch (EntityNotFoundException e) {
+            redirectAttributes.addFlashAttribute("uploadError", "Update failed: Content not found.");
+        } catch (IOException e) {
+            redirectAttributes.addFlashAttribute("uploadError", "Update failed due to a file error: " + e.getMessage());
+        }
+
         return "redirect:/admin/dashboard";
     }
 
@@ -257,18 +282,16 @@ public class ContentController {
     public String deleteContent(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
             contentService.delete(id);
-            redirectAttributes.addFlashAttribute("message", "Content deleted successfully!");
+            redirectAttributes.addFlashAttribute("uploadSuccess", "Content deleted successfully!");
         } catch (EntityNotFoundException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("uploadError", e.getMessage());
         }
-        
+
         return "redirect:/admin/dashboard";
     }
     @GetMapping("/about")
     public String aboutpage() {
-    	// The view resolver (Thymeleaf in your case) will look for 'about.html'
-        // in the 'src/main/resources/templates/' directory.
-    	return "about";
+        return "about";
     }
 
 }

@@ -18,6 +18,11 @@ public interface ContentRepository extends JpaRepository<Content, Long>, JpaSpec
     // --- Search & Filtering Methods (Used by ContentService) ---
 
     /**
+     * 💡 NEW METHOD: Finds content where the title OR tags contain the specified keyword (case-insensitive and paginated).
+     */
+    Page<Content> findByTitleContainingIgnoreCaseOrTagsContainingIgnoreCase(String title, String tagKeyword, Pageable pageable);
+    
+    /**
      * Finds content by matching the title (used for the general search/keyword filter).
      * The service combines this with the findAll(Pageable) for the final result.
      */

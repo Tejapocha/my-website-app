@@ -43,7 +43,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/like/**",     
                     "/comment/**"  
-                ).authenticated() // 💡 CRITICAL: Only authenticated users can like/comment
+                ).permitAll() // 💡 CRITICAL: Only authenticated users can like/comment
                 
                 // 3. ADMIN ACCESS (Only ADMIN role can access)
                 .requestMatchers(

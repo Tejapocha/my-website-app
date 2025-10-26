@@ -89,7 +89,6 @@
             border-top-right-radius: 12px; 
             background-color: var(--dark-blue);
         }
-        /* Video Play Icon - Adjusted to use lighter color on dark thumbnail */
         .video-thumbnail::after {
             content: "\f04b"; 
             font-family: 'Font Awesome 5 Free';
@@ -174,6 +173,14 @@
                         <li><a class="dropdown-item" th:href="@{/dashboard(tag='celebrity')}">Celebrity</a></li>
                         <li><a class="dropdown-item" th:href="@{/dashboard(tag='homemade')}">Homemade</a></li>
                         <li><a class="dropdown-item" th:href="@{/dashboard(tag='college')}">College</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='amateur')}">Amateur</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='outdoor')}">Outdoor</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='desi aunty')}">Desi aunty</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='dick riding')}">Dick riding</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='69')}">69</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='bhabhi')}">Bhabhi</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='missionary')}">Missionary</a></li>
+                        <li><a class="dropdown-item" th:href="@{/dashboard(tag='all')}">All</a></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -247,25 +254,28 @@
                 <div class="col-6 col-md-4" th:each="c : ${contents}">
                     <div class="card shadow-sm position-relative">
                         
-                        
-                        
-                        <div th:if="${c.fileType == 'video'}" class="video-thumbnail">
-                            <img th:src="@{https://placehold.co/400x180/1D3557/cccccc?text=Video+ID:+}+${c.id}" 
-                                 th:alt="${c.title}" class="card-img-top" loading="lazy"/>
-                        </div>
-                        <div th:if="${c.fileType == 'image'}">
-                            <img th:src="${c.filePath}" th:alt="${c.title}" class="card-img-top" loading="lazy"/>
-                        </div>
-
+                        <a th:href="@{/view/{id}(id=${c.id})}" target="_blank" style="text-decoration: none; color: inherit;">
+                            
+                            <div th:if="${c.fileType == 'video'}" class="video-thumbnail position-relative">
+                                <img th:src="@{https://placehold.co/400x180/1D3557/cccccc?text=Video+Content}" 
+                                     th:alt="${c.title}" class="card-img-top" loading="lazy"/>
+                            </div>
+                            
+                            <div th:if="${c.fileType == 'image'}">
+                                <img th:src="${c.filePath}" th:alt="${c.title}" class="card-img-top" loading="lazy"/>
+                            </div>
+                            
+                        </a>
                         <div class="card-body">
                             <h5 class="card-title text-truncate" th:text="${c.title}">Content Title</h5>
-                            <p class="card-text text-muted small mb-1">
-                                Views: <span th:text="${c.views}">0</span> | Likes: <span th:text="${c.likes}">0</span>
-                            </p>
                             
+                            <p class="card-text text-muted small mb-1">
+                                Views: <span th:text="${c.views}">0</span> 
+                            </p>
+
                             <div class="interaction-buttons d-flex justify-content-between align-items-center mt-2">
                                 
-                                <div sec:authorize="isAuthenticated()">
+                                <div>
                                     <button class="btn btn-sm" 
                                             type="button"
                                             th:data-content-id="${c.id}" 
@@ -276,12 +286,9 @@
                                     </button>
                                 </div>
                                 
-                                <div sec:authorize="!isAuthenticated()">
-                                    <span class="text-muted small">Likes: <span th:text="${c.likes}">0</span></span>
-                                </div>
-                                
                                 <a th:href="@{/view/{id}(id=${c.id})}" 
-                                   class="btn btn-sm btn-info text-white">
+                                   class="btn btn-sm btn-info text-white"
+                                   target="_blank">
                                     View
                                 </a>
                             </div>
@@ -351,7 +358,6 @@
 
 <script th:inline="javascript">
     // Global variable to keep track of liked status on the dashboard for quick UI update
-    // The list of Longs from Spring is converted directly into a Set of Numbers for quick lookup.
     const likedContentIds = new Set(/*[[${likedContentIds}]]*/ []);
 
     // --------------------------------------------------
@@ -359,25 +365,19 @@
     // --------------------------------------------------
     function handleLike(button) {
         const contentId = button.dataset.contentId;
-        // Check liked status in the JS Set
-        const isLiked = likedContentIds.has(Number(contentId));
         const likeCountSpan = document.getElementById('likes-' + contentId);
+        const textSpan = button.querySelector('span:first-child'); 
         
         button.disabled = true; // Disable button immediately
 
         fetch(`/like/${contentId}`, {
             method: 'POST',
-            // CSRF protection is disabled in SecurityConfig, so no token is needed here.
             headers: {'Content-Type': 'application/x-www-form-urlencoded'}
         })
         .then(response => {
-            if (response.status === 401) {
-                 alert('You must be logged in to like content!');
-                 throw new Error('Unauthorized');
-            }
+            // Catches all non-2xx errors (e.g., 404, 500)
             if (!response.ok) {
-                // Assuming the server returns JSON for errors, too
-                return response.json().then(errorData => {
+                return response.json().catch(() => ({ error: 'Server error occurred.' })).then(errorData => {
                     throw new Error(errorData.error || 'Server error occurred.');
                 });
             }
@@ -385,23 +385,28 @@
         })
         .then(data => {
             if (data.success) {
-                // Update UI based on new state
+                // 1. Always update the visible like count
                 likeCountSpan.textContent = data.newLikes;
                 
-                // Toggle liked status in JavaScript tracking set
-                if (isLiked) {
-                    likedContentIds.delete(Number(contentId));
-                    // Update button style and text for UNLIKED state
-                    button.classList.remove('btn-primary');
-                    button.classList.add('btn-outline-primary');
-                    button.querySelector('span').textContent = '[🤍 Like]';
-                } else {
-                    likedContentIds.add(Number(contentId));
-                    // Update button style and text for LIKED state
-                    button.classList.remove('btn-outline-primary');
-                    button.classList.add('btn-primary');
-                    button.querySelector('span').textContent = '[👍 Liked]';
-                }
+                // 2. Update the button style based on the 'isLiked' state returned by the server
+                if (data.isLiked !== undefined) {
+                    if (data.isLiked) {
+                        // For logged-in users, update the set and style
+                        likedContentIds.add(Number(contentId)); 
+                        button.classList.remove('btn-outline-primary');
+                        button.classList.add('btn-primary');
+                        textSpan.textContent = '[👍 Liked]';
+                    } else {
+                        // For logged-in users, update the set and style
+                        likedContentIds.delete(Number(contentId));
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-outline-primary');
+                        textSpan.textContent = '[🤍 Like]';
+                    }
+                } 
+                // For anonymous users, the button's style will simply stay the same 
+                // (which prevents repeated clicking from guests, unless your service uses IP/cookie tracking).
+
             } else {
                 console.error('Error toggling like (server reported failure):', data.error);
                 alert('Failed to update like status: ' + (data.error || 'Unknown error'));
@@ -409,10 +414,7 @@
         })
         .catch(error => {
             console.error('Liking request failed:', error);
-            // Only show generic network error if it wasn't a 401 handled above
-            if (error.message !== 'Unauthorized') {
-                 alert('A network or server processing error occurred while updating the like.');
-            }
+            alert('A network or server processing error occurred while updating the like.');
         })
         .finally(() => {
             button.disabled = false; // Re-enable button

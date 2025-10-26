@@ -23,7 +23,7 @@ public class Content {
     @Column(nullable = false)
     private String fileType;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDateTime uploadDate;
 
     @Column(nullable = false)
