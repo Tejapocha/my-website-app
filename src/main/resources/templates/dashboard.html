@@ -62,9 +62,23 @@
             justify-content: center;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+        
+        /* === MOBILE AD FIX: REMOVED FIXED HEIGHT TO PREVENT SCRIPT BLOCKING === */
         .ad-space-bottom {
-            height: 100px; /* Shorter height for bottom ad */
+            /* Kept for desktop banner height, but we will use a separate class for mobile */
+            height: 100px; 
         }
+
+        /* Dedicated container for the mobile banner ad to minimize CSS interference */
+        .mobile-banner-container {
+            background: none; /* Ensure no conflicting background */
+            padding: 0; /* Ensure no conflicting padding */
+            text-align: center;
+            /* Allow script to control height and width */
+            min-height: 50px; 
+            display: block;
+        }
+        /* ====================================================================== */
         
         /* Main Content Container Adjustments */
         .main-content-row {
@@ -330,22 +344,19 @@
                 </nav>
             </div>
             
-            <div class="ad-space ad-space-bottom mt-5 mb-3 d-lg-none d-block">
-                Ad Slot Bottom (Mobile Banner)
+            <div class="d-lg-none d-block text-center mt-5 mb-3 mobile-banner-container">
                 <script type="text/javascript">
 	atOptions = {
 		'key' : '324b1a0d16b592ab6f96060fe50e5e4c',
 		'format' : 'iframe',
-		'height' : 50,
-		'width' : 320,
+		'height' : 50, /* Important for mobile banners */
+		'width' : 320, /* Important for mobile banners */
 		'params' : {}
 	};
-</script>
-<script type="text/javascript" src="//www.highperformanceformat.com/324b1a0d16b592ab6f96060fe50e5e4c/invoke.js"></script>
-            
+                </script>
+                <script type="text/javascript" src="//www.highperformanceformat.com/324b1a0d16b592ab6f96060fe50e5e4c/invoke.js"></script>
             </div>
-
-        </div> 
+            </div> 
         
         <div class="col-lg-2 d-none d-lg-block">
              <div class="ad-space sticky-top" style="top: 20px;">
@@ -364,8 +375,8 @@
 		'width' : 300,
 		'params' : {}
 	};
-</script>
-<script type="text/javascript" src="//www.highperformanceformat.com/a5e662a790c6906576bc317c00a4c861/invoke.js"></script>
+                </script>
+                <script type="text/javascript" src="//www.highperformanceformat.com/a5e662a790c6906576bc317c00a4c861/invoke.js"></script>
             </div>
         </div>
 
