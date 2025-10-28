@@ -18,7 +18,7 @@
             --dark-blue: #1D3557;
             --light-pink: #FADDE1;
             --accent-blue: #457B9D;
-            --text-color: #343a40;
+            --text-color: #343a0;
         }
         .container { max-width: 800px; margin-top: 20px; }
         .btn-back { margin-bottom: 20px; display: inline-block; color: var(--dark-blue); font-weight: bold; text-decoration: none;}
@@ -104,10 +104,11 @@
                         "posterImage": ""
                     },
                     "vastOptions": {
+                        // We are using the Google Sample VAST tag for testing player function
                         "adList": [
                             {
                                 "roll": "preRoll",
-                                "vastTag": "https://vast.yomeno.xyz/vast?spot_id=1469316", // VAST Ad Tag
+                                "vastTag": "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ct%3Dskippablelinear&correlator=", 
                                 "adText": ""
                             }
                         ],
@@ -187,7 +188,6 @@
 
 </div>
 
-<script async src="https://js.onclckmn.com/static/onclicka.js" data-admpid="386293"></script>
 
 <script>
 // --------------------------------------------------
