@@ -73,18 +73,20 @@
     <div class="video-player">
         <th:block th:if="${content.fileType == 'video'}">
             <video controls class="w-full h-auto" 
-                   th:id="'video-player-' + ${content.id}" 
-                   th:onloadeddata="|incrementViewAsync(${content.id})|">
+                   th:id="'video-player-' + ${content.id}">
                 <source th:src="${content.filePath}" type="video/mp4">
             </video>
            
             <script th:inline="javascript">
             /*<![CDATA[*/
-            // Dynamic ID is correctly generated using Thymeleaf
-            const videoElementId = 'video-player-' + '[[${content.id}]]'; 
+            const contentId = '[[${content.id}]]';
+            const videoElementId = 'video-player-' + contentId; 
+            
+            // Track if view has been counted for this load (to prevent multiple increments)
+            let viewCounted = false; 
         
             var myFP = fluidPlayer(
-                videoElementId,	{ // Pass the dynamic ID here
+                videoElementId,	{ 
                     "layoutControls": {
                         "controlBar": {
                             "autoHideTimeout": 3,
@@ -111,7 +113,7 @@
                         "adList": [
                             {
                                 "roll": "preRoll",
-                                "vastTag": "https://vast.yomeno.xyz/vast?spot_id=1469316", 
+                                "vastTag": "https://ordinary-check.com/d.mfFwzTdIGMNEvPZPG/Ue/FeMmo9VuvZ/UUlCkFPDTiYe2FOdDuclyeMJjhIPt/NBj/Y-4PNvzdINy_MZwb", 
                                 "adText": ""
                             }
                         ],
@@ -120,12 +122,32 @@
                     }
                 }
             );
+            
+            // CRITICAL FIX: Use Fluid Player 'play' event to increment view
+            myFP.on('play', function() {
+                if (!viewCounted) {
+                    incrementViewAsync(contentId);
+                    viewCounted = true;
+                }
+            });
             /*]]>*/
             </script>
         </th:block>
         
         <th:block th:if="${content.fileType == 'image'}">
-            <img th:src="${content.filePath}" th:alt="${content.title}" class="w-full h-auto" th:id="'image-' + ${content.id}" th:onload="|incrementViewAsync(${content.id})|"/>
+            <img th:src="${content.filePath}" th:alt="${content.title}" class="w-full h-auto" th:id="'image-' + ${content.id}"/>
+            
+            <script th:inline="javascript">
+                /*<![CDATA[*/
+                // Assign the content ID to a JS variable
+                const imageContentId = /*[[${content.id}]]*/ 'defaultId';
+                
+                // Only for image types, call the view increment once on page load
+                // The previous check ('[[${content.fileType}]]' === 'image') is redundant 
+                // because this script is already inside th:if="${content.fileType == 'image'}"
+                incrementViewAsync(imageContentId);
+                /*]]>*/
+            </script>
         </th:block>
     </div>
     
@@ -166,6 +188,7 @@
         <h2>Comments</h2>
         
         <form th:action="@{/comment/{id}(id=${content.id})}" method="post" class="mb-4">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <textarea name="comment" class="form-control" rows="3" required placeholder="Add a comment..."></textarea>
             <button type="submit" class="btn btn-primary mt-2">Post Comment</button>
         </form>
@@ -302,7 +325,6 @@ function handleLikeDetail(button) {
 // AJAX View Increment (Called on load/media interaction)
 // --------------------------------------------------
 function incrementViewAsync(contentId) {
-    // This is called by the ContentController, but we ensure it runs here for media files too.
     fetch(`/view/${contentId}`, {
         method: 'POST',
         // keepalive helps ensure the request finishes even if the user immediately leaves the page
@@ -312,11 +334,11 @@ function incrementViewAsync(contentId) {
     .then(data => {
         if (data.success) {
             console.log(`View count for ${contentId} incremented successfully.`);
-            // Update the view count on the page without reload
+            
+            // CRITICAL FIX: Update the view count with the value returned from the server (data.newViews)
             const viewCountSpan = document.getElementById('view-count');
-            if(viewCountSpan) {
-                // We use the existing logic to increment the client-side count
-                viewCountSpan.textContent = parseInt(viewCountSpan.textContent) + 1;
+            if(viewCountSpan && data.newViews !== undefined) { 
+                viewCountSpan.textContent = data.newViews;
             }
         } else {
             console.error('Failed to increment view count:', data.error);
