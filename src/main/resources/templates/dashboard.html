@@ -105,6 +105,15 @@
             border-top-right-radius: 12px; 
             background-color: var(--dark-blue);
         }
+        
+        /* The video-thumbnail class is the parent container for the thumbnail image */
+        .video-thumbnail {
+            /* Ensures the ::after element (play icon) is positioned correctly relative to the image */
+            position: relative; 
+            display: block;
+        }
+        
+        /* Play Icon Overlay for Videos */
         .video-thumbnail::after {
             content: "\f04b"; 
             font-family: 'Font Awesome 5 Free';
@@ -305,16 +314,18 @@ l.parentNode.insertBefore(s, l);
                         
                         <a th:href="@{/view/{id}(id=${c.id})}" target="_blank" style="text-decoration: none; color: inherit;">
                             
-                            <div th:if="${c.fileType == 'video'}" class="video-thumbnail position-relative">
-                                <img th:src="@{https://placehold.co/400x180/1D3557/cccccc?text=Video+Content}" 
-                                     th:alt="${c.title}" class="card-img-top" loading="lazy"/>
+                            <div th:if="${c.fileType == 'video'}" class="video-thumbnail">
+                                <img th:src="${c.thumbnailUrl}" 
+                                     th:alt="${c.title} + ' Thumbnail'" 
+                                     class="card-img-top" 
+                                     loading="lazy"
+                                     onerror="this.onerror=null; this.src='@{/images/default-video-placeholder.png}';"/>
                             </div>
                             
                             <div th:if="${c.fileType == 'image'}">
                                 <img th:src="${c.filePath}" th:alt="${c.title}" class="card-img-top" loading="lazy"/>
                             </div>
-                            
-                        </a>
+                            </a>
                         <div class="card-body">
                             <h5 class="card-title text-truncate" th:text="${c.title}">Content Title</h5>
                             
@@ -468,11 +479,11 @@ l.parentNode.insertBefore(s, l);
 var d = document,
     s = d.createElement('script'),
     l = d.scripts[d.scripts.length - 1];
-s.settings = asut || {};
-s.src = "\/\/useful-appearance.com\/brX.VUsFdRG\/l\/0NYtWUcF\/-eQmS9DuDZoU\/lWkOPVT\/Yy2\/O_TiAbxeNkjagftvNKjzYs5\/MMDZEq2pOEQb";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
+    s.settings = asut || {};
+    s.src = "\/\/useful-appearance.com\/brX.VUsFdRG\/l\/0NYtWUcF\/-eQmS9DuDZoU\/lWkOPVT\/Yy2\/O_TiAbxeNkjagftvNKjzYs5\/MMDZEq2pOEQb";
+    s.async = true;
+    s.referrerPolicy = 'no-referrer-when-downgrade';
+    l.parentNode.insertBefore(s, l);
 })({})
 </script>
        <script async="async" data-cfasync="false" src="//pl27956334.effectivegatecpm.com/7cebcb3b220728f384cd1357a5d8fb8c/invoke.js"></script>

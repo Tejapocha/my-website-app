@@ -23,6 +23,10 @@ public class Content {
     @Column(nullable = false)
     private String fileType;
 
+    // ⭐ NEW FIELD: Stores the public URL/path for the video thumbnail ⭐
+    @Column(nullable = true) // Can be null for non-video content
+    private String thumbnailUrl;
+    
     @Column(nullable = true)
     private LocalDateTime uploadDate;
 
@@ -45,7 +49,6 @@ public class Content {
     // orphanRemoval = true ensures comments are deleted if removed from the collection.
     @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>(); 
-
     // --- Constructor (Optional, but useful) ---
     public Content() {}
     
@@ -91,6 +94,16 @@ public class Content {
         this.fileType = fileType;
     }
 
+    // ⭐ NEW Getter for thumbnailUrl ⭐
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    // ⭐ NEW Setter for thumbnailUrl ⭐
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
     public String getTags() {
         return tags;
     }
@@ -132,9 +145,13 @@ public class Content {
         this.comments = comments;
     }
     
-    // Helper method to manage the bidirectional relationship when adding a comment
+    /**
+     * Helper method to manage the bidirectional relationship when adding a comment.
+     * It ensures both sides of the relationship are linked.
+     */
     public void addComment(Comment comment) {
         comments.add(comment);
-        comment.setContent(this); // Assuming your Comment entity has a setContent method
+        // ⭐ CRITICAL FIX: Explicitly set the 'content' reference on the Comment side
+        comment.setContent(this); 
     }
 }

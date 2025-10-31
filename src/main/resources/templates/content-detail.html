@@ -31,7 +31,7 @@
             width: 100%; 
             height: auto; 
             max-height: 500px;  
-            object-fit: contain; /* Kept 'contain' to prevent zooming/cropping */
+            object-fit: contain;
             background-color: #000; 
         }
         .interaction-bar { display: flex; align-items: center; gap: 20px; margin-top: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
@@ -41,7 +41,6 @@
             color: gray; 
         }
         .like-btn.liked { color: #dc3545; } /* Use Bootstrap Danger Red for Liked Heart */
-        /* Updated style for comments-box to be a scrolling container for individual comments */
         .comments-list { max-height: 350px; overflow-y: auto; padding: 10px 0; }
         .comment-item { border-bottom: 1px solid #eee; padding: 10px 0; }
         .comment-text { margin-top: 5px; white-space: pre-wrap; }
@@ -73,7 +72,8 @@
     <div class="video-player">
         <th:block th:if="${content.fileType == 'video'}">
             <video controls class="w-full h-auto" 
-                   th:id="'video-player-' + ${content.id}">
+                   th:id="'video-player-' + ${content.id}"
+                   th:poster="${content.thumbnailUrl}"> 
                 <source th:src="${content.filePath}" type="video/mp4">
             </video>
            
@@ -82,7 +82,6 @@
             const contentId = '[[${content.id}]]';
             const videoElementId = 'video-player-' + contentId; 
             
-            // Track if view has been counted for this load (to prevent multiple increments)
             let viewCounted = false; 
         
             var myFP = fluidPlayer(
@@ -105,8 +104,8 @@
                         "playbackRateEnabled": false,
                         "allowDownload": false,
                         "playButtonShowing": false,
-                        "fillToContainer": false,
-                        "posterImage": ""
+                        // 2. OPTIONAL: Fluid Player 'posterImage' can be set here if the video tag's 'poster' isn't enough.
+                        "posterImage": "" 
                     },
                     "vastOptions": {
                         "adList": [
@@ -122,13 +121,14 @@
                 }
             );
             
-            // CRITICAL FIX: Use Fluid Player 'play' event to increment view
+            // Use Fluid Player 'play' event to increment view
             myFP.on('play', function() {
                 if (!viewCounted) {
                     incrementViewAsync(contentId);
                     viewCounted = true;
                 }
             });
+            
             /*]]>*/
             </script>
         </th:block>
@@ -138,12 +138,9 @@
             
             <script th:inline="javascript">
                 /*<![CDATA[*/
-                // Assign the content ID to a JS variable
                 const imageContentId = /*[[${content.id}]]*/ 'defaultId';
                 
-                // Only for image types, call the view increment once on page load
-                // The previous check ('[[${content.fileType}]]' === 'image') is redundant 
-                // because this script is already inside th:if="${content.fileType == 'image'}"
+                // For image types, call the view increment once on page load
                 incrementViewAsync(imageContentId);
                 /*]]>*/
             </script>
@@ -219,13 +216,6 @@
 
 </div>
 
-<script async src="https://js.onclckmn.com/static/onclicka.js" data-admpid="386293"></script>
-
-
- 
-
-</body>
-
 <script>
 // --------------------------------------------------
 // Helper functions for Link Sharing
@@ -235,7 +225,6 @@ function generateUniqueContentLink(id) {
 }
 
 function shareLink(id, platform) {
-    // The ID is now correctly passed as a number/string from Thymeleaf
     const link = generateUniqueContentLink(id); 
     const encoded = encodeURIComponent(link);
     let url = '';
@@ -259,7 +248,6 @@ function copyFallback(link) {
 }
 
 function copyLink(id) {
-    // The ID is now correctly passed as a number/string from Thymeleaf
     const link = generateUniqueContentLink(id); 
 
     if (navigator.clipboard) {
@@ -304,7 +292,7 @@ function handleLikeDetail(button) {
             likeCountStrong.textContent = data.newLikes;
             
             // 2. Toggle the liked state (UI update)
-            isLiked = !isLiked;
+            isLiked = data.isLiked; // Rely on server's returned state
             button.dataset.isLiked = isLiked;
             
             if (isLiked) {
@@ -332,9 +320,14 @@ function handleLikeDetail(button) {
 // AJAX View Increment (Called on load/media interaction)
 // --------------------------------------------------
 function incrementViewAsync(contentId) {
-    fetch(`/view/${contentId}`, {
+    // 5. CRITICAL FIX: The Controller is currently incrementing views on the GET request for /view/{id}.
+    // If you want to move it to a POST/AJAX call to update the count dynamically, you need to
+    // change the Controller endpoint to @PostMapping("/view/{id}") and ensure the service method 
+    // also returns the new view count.
+    
+    // Assuming you move the increment logic to an AJAX-friendly endpoint in your controller:
+    fetch(`/view/increment/${contentId}`, { // Changed to a dedicated POST endpoint for clarity
         method: 'POST',
-        // keepalive helps ensure the request finishes even if the user immediately leaves the page
         keepalive: true 
     })
     .then(response => response.json())
@@ -342,7 +335,7 @@ function incrementViewAsync(contentId) {
         if (data.success) {
             console.log(`View count for ${contentId} incremented successfully.`);
             
-            // CRITICAL FIX: Update the view count with the value returned from the server (data.newViews)
+            // Update the view count with the value returned from the server
             const viewCountSpan = document.getElementById('view-count');
             if(viewCountSpan && data.newViews !== undefined) { 
                 viewCountSpan.textContent = data.newViews;
