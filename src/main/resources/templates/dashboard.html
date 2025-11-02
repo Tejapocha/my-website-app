@@ -7,8 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-	<meta name="0ba6e8fb12cbb3cd9d05948d93ad5d8029f84323" content="0ba6e8fb12cbb3cd9d05948d93ad5d8029f84323" />
-    <meta name="referrer" content="no-referrer-when-downgrade" />
+	
     <style>
         /* NEW COLOR PALETTE & LAYOUT */
         :root {
@@ -50,36 +49,39 @@
         }
         
         /* AD Space Styling */
-        .ad-space {
+        .ad-placeholder {
+            /* This is the container where the script will inject the actual ad */
             background-color: var(--accent-blue);
             color: white;
             padding: 15px;
-            margin-bottom: 20px;
             border-radius: 8px;
             text-align: center;
             font-size: 0.9rem;
-            height: 250px; /* Fixed height for left/right ads */
+            height: 250px; /* Fixed height for sticky side ads (300x250 standard) */
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden; /* To prevent ad elements from breaking fixed height */
         }
         
-        /* === MOBILE AD FIX: REMOVED FIXED HEIGHT TO PREVENT SCRIPT BLOCKING === */
-        .ad-space-bottom {
-            /* Kept for desktop banner height, but we will use a separate class for mobile */
-            height: 100px; 
+        /* Ad Banner Styles for bottom (728x90 standard) */
+        .ad-placeholder-banner {
+            background-color: var(--accent-blue);
+            color: white;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+            height: auto; /* Responsive height for mobile/desktop banners */
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
-        /* Dedicated container for the mobile banner ad to minimize CSS interference */
-        .mobile-banner-container {
-            background: none; /* Ensure no conflicting background */
-            padding: 0; /* Ensure no conflicting padding */
-            text-align: center;
-            /* Allow script to control height and width */
-            min-height: 50px; 
-            display: block;
-        }
         /* ====================================================================== */
         
         /* Main Content Container Adjustments */
@@ -160,7 +162,6 @@
         }
 
     </style>
-    <script type='text/javascript' src='//pl27956345.effectivegatecpm.com/0a/4e/44/0a4e4404e2242fae715712f1f0712254.js'></script>
 </head>
 <body>
 
@@ -173,16 +174,7 @@
             </svg>
             <span class="logo-text">FS Blog</span>
         </a>
-        <script type="text/javascript">
-	atOptions = {
-		'key' : '2df4d10208d8682de60fdb762550cea4',
-		'format' : 'iframe',
-		'height' : 90,
-		'width' : 728,
-		'params' : {}
-	};
-</script>
-<script type="text/javascript" src="//www.highperformanceformat.com/2df4d10208d8682de60fdb762550cea4/invoke.js"></script>
+       
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -259,44 +251,31 @@
                 Browse <span th:text="${activeFilterTitle} ? ${activeFilterTitle} : 'Latest Content'">Latest Content</span>
             </h3>
         </div>
-        
-        
     </div>
     
     <div class="row main-content-row">
         
         <div class="col-lg-2 d-none d-lg-block">
-            <div class="ad-space sticky-top" style="top: 20px;">
-                <script>
-(function(lbf){
+            <div class="ad-placeholder sticky-top mb-4" style="top: 20px;">
+            <script>
+(function(nfox){
 var d = document,
     s = d.createElement('script'),
     l = d.scripts[d.scripts.length - 1];
-s.settings = lbf || {};
-s.src = "\/\/useful-appearance.com\/bEXQV.swdCGOlj0EYVWrcT\/yecmC9\/uUZ\/UclckPPQT\/YM2\/ODT\/AOxkN\/zzIjtmNMjWYN5aMdDEEK3vMnw_";
+s.settings = nfox || {};
+s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
 s.async = true;
 s.referrerPolicy = 'no-referrer-when-downgrade';
 l.parentNode.insertBefore(s, l);
 })({})
 </script>
+                <script onerror="this.remove()" src="//useful-appearance.com/bRX.Vwshd/G/lq0QYZWdcD/rePm_9Gu/ZxUolmkEP/T/Y/2/OjTeAyx/Nhj/gVtONtjIYX5/M/DOEe2oOKQf"></script>
             </div>
-            <div class="ad-space sticky-top" style="top: 290px;">
-               <script>
-(function(wczr){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = wczr || {};
-s.src = "\/\/ordinary-check.com\/cpDt9\/6\/b.2r5KleSgWBQi9BN\/j\/Yg5BMfDsE\/3ZN\/yK0b2tNGjckuwpMYT\/co4e";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>
+            <div class="ad-placeholder sticky-top" style="top: 290px;">
+               <script onerror="this.remove()" src="//ordinary-check.com/cpDt9/6/b.2r5KleSgWBQi9BN/j/Yg5BMfDsE/3ZN/yK0b2tNGjckuwpMYT/co4e"></script>
             </div>
         </div>
         
-
         <div class="col-12 col-lg-8">
             
             <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -308,6 +287,22 @@ l.parentNode.insertBefore(s, l);
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
 
+            <div class="ad-placeholder-banner mb-4">
+            <script>
+(function(nfox){
+var d = document,
+    s = d.createElement('script'),
+    l = d.scripts[d.scripts.length - 1];
+s.settings = nfox || {};
+s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
+s.async = true;
+s.referrerPolicy = 'no-referrer-when-downgrade';
+l.parentNode.insertBefore(s, l);
+})({})
+</script>
+                <script onerror="this.remove()" src="//useful-appearance.com/brX.VUsFdRG/l/0NYtWUcF/-eQmS9DuDZoU/lWkOPVT/Yy2/O_TiAbxeNkjagftvNKjzYs5/MMDZEq2pOEQb"></script>
+            </div>
+
             <div class="row g-4">
                 <div class="col-6 col-md-4" th:each="c : ${contents}">
                     <div class="card shadow-sm position-relative">
@@ -317,7 +312,6 @@ l.parentNode.insertBefore(s, l);
                             <div th:if="${c.fileType == 'video'}" class="video-thumbnail">
                                 <img th:src="${c.thumbnailUrl}" 
                                      th:alt="${c.title} + ' Thumbnail'" 
-                                     class="card-img-top" 
                                      loading="lazy"
                                      onerror="this.onerror=null; this.src='@{/images/default-video-placeholder.png}';"/>
                             </div>
@@ -362,6 +356,22 @@ l.parentNode.insertBefore(s, l);
                     </div>
                 </div>
             </div>
+            
+            <div class="ad-placeholder-banner mt-5 mb-3">
+            <script>
+(function(nfox){
+var d = document,
+    s = d.createElement('script'),
+    l = d.scripts[d.scripts.length - 1];
+s.settings = nfox || {};
+s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
+s.async = true;
+s.referrerPolicy = 'no-referrer-when-downgrade';
+l.parentNode.insertBefore(s, l);
+})({})
+</script>
+                <script onerror="this.remove()" src="//useful-appearance.com/bmXyVcsgd.Gnlu0WYzWacN/deTmi9QuFZoUtlIkZPLT/Yh2MOkTSAZxLOkDnEqtKN/jgY/5ZMoD-E_4TMrgs"></script>
+            </div>
 
             <div th:if="${totalPages > 1}" class="d-flex justify-content-center mt-5">
                 <nav aria-label="Page navigation">
@@ -389,106 +399,39 @@ l.parentNode.insertBefore(s, l);
                 </nav>
             </div>
             
-            <div class="d-lg-none d-block text-center mt-5 mb-3 mobile-banner-container">
-                <style type="text/css">
-                  .mobileShow {display: none;}
-
-                  /* Smartphone Portrait and Landscape */
-                  @media only screen
-                    and (min-device-width : 320px)
-                    and (max-device-width : 480px){ 
-                      .mobileShow {display: inline;}
-                  }
-                  .mobileHide { display: inline; }
-
-                  /* Smartphone Portrait and Landscape */
-                  @media only screen
-                    and (min-device-width : 320px)
-                    and (max-device-width : 480px){
-                     .mobileHide { display: none;}
-                  }
-                </style>
-                
-                <div class="mobileShow"> 
-                    <script type="text/javascript">
-                        atOptions = {
-                            'key' : '4ebe99704ca095e6fac11ef85acb6357',
-                            'format' : 'iframe',
-                            'height' : 50,
-                            'width' : 320,
-                            'params' : {}
-                        };
-                    </script>
-                    <script type="text/javascript" src="//www.highperformanceformat.com/4ebe99704ca095e6fac11ef85acb6357/invoke.js"></script>
-                </div>
-                
-                <div class="mobileHide">
-                    <script type="text/javascript">
-                        atOptions = {
-                            'key' : '8a62b13a232cae3e23f0efc157516f6e',
-                            'format' : 'iframe',
-                            'height' : 250,
-                            'width' : 300,
-                            'params' : {}
-                        };
-                    </script>
-                    <script type="text/javascript" src="//www.highperformanceformat.com/8a62b13a232cae3e23f0efc157516f6e/invoke.js"></script>
-                </div>
-                </div> 
+        </div>
         
         <div class="col-lg-2 d-none d-lg-block">
-             <div class="ad-space sticky-top" style="top: 20px;">
-    <a href="https://www.effectivegatecpm.com/x6w50ui379?key=28947f4f6dab00b7330cd587d9fd4b28" target="_blank" style="color: white; text-decoration: none;">
-        Click to View Our Sponsor's Offer
-    </a>
-    </div>
-       <script>
-(function(dmi){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = dmi || {};
-s.src = "\/\/useful-appearance.com\/bgX.Vds-d\/G-ls0sYtWcce\/Oekmv9FuDZkUblskZPSTCYp2\/OJTuAvxQOwDqEPtVNSjuYv5PMmDGEt4hM-gu";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>         
+             <div class="ad-placeholder sticky-top mb-4" style="top: 20px;">
+                <script onerror="this.remove()" src="//useful-appearance.com/brX-VKs.dpG/l/0KYZWUcZ/heqm/9_uzOUmlukaP_TNYe2/OET/ABxLN/jAgWtiNAjAY/5LM/DlEF2uOQQt"></script>
             </div>
-            <div class="ad-space sticky-top" style="top: 290px;">
-                <script type="text/javascript">
-	atOptions = {
-		'key' : 'a5e662a790c6906576bc317c00a4c861',
-		'format' : 'iframe',
-		'height' : 250,
-		'width' : 300,
-		'params' : {}
-	};
-                </script>
-                <script type="text/javascript" src="//www.highperformanceformat.com/a5e662a790c6906576bc317c00a4c861/invoke.js"></script>
+            <div class="ad-placeholder sticky-top" style="top: 290px;">
+                    <script onerror="this.remove()" src="//useful-appearance.com/b.X/V\/sQd\/GYl\/0UYAW\/cM\/Ee\/md9puuZcUElBkKPnTxYl2HOYT\/A\/xQNWzzIntZNLjCYk5kM\/DKEw3\/M\/wB"></script>
             </div>
         </div>
 
     </div>
     
-    <div class="row mt-5 d-none d-lg-flex">
+    <div class="row mt-5">
         <div class="col-12">
-            <div class="ad-space ad-space-bottom">
-            <script>
-(function(asut){
+             <div class="ad-placeholder-banner mb-3">
+                <script onerror="this.remove()" src="//ordinary-check.com/c.D\/9_6tbc2f5glXSJWHQW9\/N\/jnYV4vNMzQQ-wSM_y\/0R2xNWj\/g\/3ZNDuA\/0v"></script>
+            </div>
+             <div class="ad-placeholder-banner">
+             <script>
+(function(nfox){
 var d = document,
     s = d.createElement('script'),
     l = d.scripts[d.scripts.length - 1];
-    s.settings = asut || {};
-    s.src = "\/\/useful-appearance.com\/brX.VUsFdRG\/l\/0NYtWUcF\/-eQmS9DuDZoU\/lWkOPVT\/Yy2\/O_TiAbxeNkjagftvNKjzYs5\/MMDZEq2pOEQb";
-    s.async = true;
-    s.referrerPolicy = 'no-referrer-when-downgrade';
-    l.parentNode.insertBefore(s, l);
+s.settings = nfox || {};
+s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
+s.async = true;
+s.referrerPolicy = 'no-referrer-when-downgrade';
+l.parentNode.insertBefore(s, l);
 })({})
 </script>
-       <script async="async" data-cfasync="false" src="//pl27956334.effectivegatecpm.com/7cebcb3b220728f384cd1357a5d8fb8c/invoke.js"></script>
-<div id="container-7cebcb3b220728f384cd1357a5d8fb8c"></div>         
-            </div>
+                <div id="container-7cebcb3b220728f384cd1357a5d8fb8c"></div>
+            </div>         
         </div>
     </div>
 
@@ -542,9 +485,6 @@ var d = document,
                         textSpan.textContent = '[🤍 Like]';
                     }
                 } 
-                // For anonymous users, the button's style will simply stay the same 
-                // (which prevents repeated clicking from guests, unless your service uses IP/cookie tracking).
-
             } else {
                 console.error('Error toggling like (server reported failure):', data.error);
                 alert('Failed to update like status: ' + (data.error || 'Unknown error'));
@@ -558,18 +498,7 @@ var d = document,
             button.disabled = false; // Re-enable button
         });
     }
-    (function(ihdgu){
-    var d = document,
-        s = d.createElement('script'),
-        l = d.scripts[d.scripts.length - 1];
-    s.settings = ihdgu || {};
-    s.src = "\/\/ordinary-check.com\/c.D\/9_6tbc2f5glXSJWHQW9\/N\/jnYV4vNMzQQ-wSM_y\/0R2xNWj\/g\/3ZNKDuA\/0v";
-    s.async = true;
-    s.referrerPolicy = 'no-referrer-when-downgrade';
-    l.parentNode.insertBefore(s, l);
-    })({})
     
 </script>
-<script type='text/javascript' src='//pl27956337.effectivegatecpm.com/2c/1c/eb/2c1ceb85048f5d8ae3a86cd9044e4657.js'></script>
 </body>
 </html>
