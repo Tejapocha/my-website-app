@@ -8,16 +8,20 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
-    <link href="https://vjs.zencdn.net/8.23.4/video-js.css" rel="stylesheet" />
-
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     <link href="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.css" rel="stylesheet" type="text/css">
     <link href="https://googleads.github.io/videojs-ima/dist/videojs.ima.css" rel="stylesheet" type="text/css">
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script async src="https://js.onclckmn.com/static/onclicka.js" data-admpid="386703"></script>
+    
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-ads/6.6.0/videojs.ads.min.js"></script> 
+  
+    <script src="//imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+    
+    <script src="https://googleads.github.io/videojs-ima/dist/videojs.ima.js"></script>
 
     <style>
-        /* Re-using styles from dashboard for consistency */
+        /* CSS styles remain unchanged */
         :root {
             --dark-blue: #1D3557;
             --light-pink: #FADDE1;
@@ -26,21 +30,15 @@
         }
         .container { max-width: 600px; margin-top: 20px; }
         .btn-back { margin-bottom: 20px; display: inline-block; color: var(--dark-blue); font-weight: bold; text-decoration: none;}
-
-        /* 💡 VIDEO CONTAINER: Forces the 4:3 aspect ratio using the modern CSS property */
         .video-player-final {
             width: 100%;
-            /* Defines the 4:3 aspect ratio (can be changed to 16 / 9 if needed) */
             aspect-ratio: 4 / 3;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            background-color: #000; /* Ensures black bars are visible */
+            background-color: #000;
             overflow: hidden;
             position: relative;
         }
-
-        /* ⭐ CRITICAL CROPPING FIX: Targets the video element itself and the Video.js player */
-        /* Video.js is a block-level element, so we use object-fit on the inner video element */
         .video-player-final .video-js {
             position: absolute;
             top: 0;
@@ -48,14 +46,10 @@
             width: 100% !important;
             height: 100% !important;
         }
-
         .video-player-final .video-js video {
             object-fit: contain !important;
         }
-
-
         .interaction-bar { display: flex; align-items: center; gap: 20px; margin-top: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
-
         .like-btn {
             background: none; border: none; font-size: 1.5rem; cursor: pointer; transition: color 0.2s;
             color: gray;
@@ -95,8 +89,6 @@
                 controls
                 class="video-js vjs-default-skin"
                 th:id="'video-player-' + ${content.id}"
-                th:poster="${content.thumbnailUrl}"
-                preload="auto"
                 data-setup='{}'
             >
                 <source th:src="${content.filePath}" type="video/mp4">
@@ -108,11 +100,12 @@
             const videoElementId = 'video-player-' + contentId;
 
             let viewCounted = false;
+            let adsRequested = false; 
+            let imaReady = false; 
 
-            // ⚠️ Google IMA Sample Ad Tag for Pre-roll (Using a standard one for reliability)
-            // You can replace this with your actual VAST/VMAP tag if you have one.
-            const AD_TAG_URL = "https://ordinary-check.com/d.mbFMzqdQGJNYviZpGKUA/leVmh9cu/ZtU_lik/PwTtY/2YOdDwkF5SM/zegLtBN/jzY/4NO/TPk/z-OdQh" + Date.now();
-
+            // ✅ SKIPPABLE AD TAG: Requests a pre-roll ad that includes a skip button.
+// Replace your problematic AD_TAG_URL with this:
+const AD_TAG_URL = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=sample_ct%3Dlinear&correlator=" + Date.now();
 
             // 1. Initialize Video.js Player
             const player = videojs(videoElementId);
@@ -121,32 +114,99 @@
             const imaOptions = {
                 id: videoElementId,
                 adTagUrl: AD_TAG_URL,
-                // Optional: Force a specific behavior if needed
                 client: 'html5'
             };
 
             player.ima(imaOptions);
 
-            // 3. View Count Logic (Using Video.js 'play' event)
+            // --- Ad Error and Completion Handlers ---
+            function resumeContent() {
+                if (player.paused()) {
+                    player.play();
+                }
+            }
+
+            function onAdsRequestError(adsRequestErrorEvent) {
+                console.error('IMA Ads Request Error: ' + adsRequestErrorEvent.getError().getMessage());
+                resumeContent();
+            }
+
+            function onAdError(adErrorEvent) {
+                console.error('IMA Ad Error: ' + adErrorEvent.getError().getMessage());
+                if (player.ima.adsManager) {
+                    player.ima.adsManager.destroy();
+                }
+                resumeContent();
+            }
+
+            function onAllAdsCompleted() {
+                console.log('IMA: All ads completed. Resuming content.');
+                resumeContent();
+            }
+            // ---------------------------------------
+
+            // 🔑 CRITICAL FIX: Ensure IMA is ready before trying to use its objects.
+            player.on('ima3-ready', function() {
+                console.log("IMA: Plugin reports it is ready.");
+                imaReady = true;
+
+                // Attach IMA Listeners ONLY when ready
+                const adsLoader = player.ima.adsLoader;
+                
+                adsLoader.addEventListener(
+                    google.ima.AdsLoader.AdsRequestError.Type.ADS_REQUEST_ERROR,
+                    onAdsRequestError,
+                    false
+                );
+                
+                adsLoader.addEventListener(
+                    google.ima.AdsLoader.AdsManagerLoaded.Type.ADS_MANAGER_LOADED,
+                    function(adsManagerLoadedEvent) {
+                        const adsManager = adsManagerLoadedEvent.getAdsManager();
+                        // Note: Use AdErrorEvent.Type for ad errors
+                        adsManager.addEventListener(google.ima.AdEvent.Type.AD_ERROR, onAdError); 
+                        adsManager.addEventListener(google.ima.AdEvent.Type.ALL_ADS_COMPLETED, onAllAdsCompleted);
+                    },
+                    false
+                );
+
+                // If the user clicked play before this event fired, request the ad now.
+                if (player.currentTime() === 0 && !adsRequested) {
+                    player.ima.requestAds();
+                    adsRequested = true;
+                }
+            });
+
+
+            // 3. CORE LOGIC: Request Ads on First Play event (User gesture)
             player.on('play', function() {
-                // The IMA plugin will trigger 'play' for both the ad and the content.
-                // We should check if the ad has played (or if it's the first 'play')
-                // A reliable method is often to use the IMA SDK's events or simply
-                // rely on the first user-initiated play. For simplicity here, we use the `viewCounted` flag.
-                if (!viewCounted) {
+                if (!adsRequested && imaReady) {
+                    console.log('IMA: First play detected and IMA is ready. Requesting ads now.');
+                    
+                    // Pause the content immediately so the ad can take over
+                    player.pause(); 
+                    
+                    // This action triggers the pre-roll ad sequence
+                    player.ima.requestAds();
+                    adsRequested = true;
+
+                } else if (!adsRequested && !imaReady) {
+                    // If they click play before IMA is ready, we must wait for 'ima3-ready' to trigger ad request.
+                    console.log('IMA: First play detected, but IMA is not ready yet. Waiting for ima3-ready event.');
+                    
+                    // Pause, but don't request ads yet. The ima3-ready handler will request them.
+                    player.pause();
+                }
+
+                
+                // 4. View Count Logic (Safest check for adPlaying function)
+                const adPlayingCheck = player.ima && typeof player.ima.adPlaying === 'function' ? player.ima.adPlaying() : false;
+
+                if (adsRequested && !adPlayingCheck && !viewCounted) {
                     incrementViewAsync(contentId);
                     viewCounted = true;
                 }
             });
-
-            // 4. Request Ads
-            // For client-side IMA, we request ads once the player is ready.
-            player.on('ready', function() {
-                // Manually request ads to start the pre-roll sequence
-                player.ima.requestAds();
-            });
-
-
             /*]]>*/
             </script>
         </th:block>
@@ -157,8 +217,6 @@
             <script th:inline="javascript">
                 /*<![CDATA[*/
                 const imageContentId = /*[[${content.id}]]*/ 'defaultId';
-
-                // For image types, call the view increment once on page load
                 incrementViewAsync(imageContentId);
                 /*]]>*/
             </script>
@@ -197,18 +255,7 @@
         <button class="btn btn-dark btn-sm"
                 th:onclick="'javascript:copyLink(' + ${content.id} + ');'" ><i class="fas fa-link me-1"></i> Copy Link</button>
     </div>
-<script>
-(function(onjd){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = onjd || {};
-s.src = "\/\/useful-appearance.com\/bXX.VKswdZGclG0jYGWGcD\/ceRmR9QukZWUKlCkQPETEYf2pOkT\/A\/xGNojug\/t\/NvjNYA5bM\/DaE\/2GOPQi";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>
+    
     <div class="comments-section mt-4">
         <h2>Comments</h2>
 
@@ -244,16 +291,11 @@ l.parentNode.insertBefore(s, l);
     </div>
 
 </div>
-
-<script src="https://vjs.zencdn.net/8.23.4/video.min.js"></script>
-
-<script src="//imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
-
-<script src="https://googleads.github.io/videojs-ima/dist/videojs.ima.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 // --------------------------------------------------
-// Helper functions for Link Sharing (UNCHANGED)
+// Helper functions (UNCHANGED)
 // --------------------------------------------------
 function generateUniqueContentLink(id) {
     return window.location.origin + "/view/" + id;
@@ -271,7 +313,6 @@ function shareLink(id, platform) {
     window.open(url, '_blank', 'width=600,height=400');
 }
 
-// Fallback copy function for execCommand
 function copyFallback(link) {
     const dummy = document.createElement('textarea');
     document.body.appendChild(dummy);
@@ -298,9 +339,6 @@ function copyLink(id) {
 }
 
 
-// --------------------------------------------------
-// AJAX Like Function for the Detail Page (UNCHANGED)
-// --------------------------------------------------
 function handleLikeDetail(button) {
     const contentId = button.dataset.contentId;
     let isLiked = button.dataset.isLiked === 'true';
@@ -351,9 +389,6 @@ function handleLikeDetail(button) {
     });
 }
 
-// --------------------------------------------------
-// AJAX View Increment (UNCHANGED)
-// --------------------------------------------------
 function incrementViewAsync(contentId) {
     fetch(`/view/increment/${contentId}`, {
         method: 'POST',
