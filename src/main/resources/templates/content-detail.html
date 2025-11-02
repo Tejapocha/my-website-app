@@ -26,30 +26,36 @@
         .container { max-width: 600px; margin-top: 20px; }
         .btn-back { margin-bottom: 20px; display: inline-block; color: var(--dark-blue); font-weight: bold; text-decoration: none;}
         
-        /* 💡 VIDEO STYLES: Use aspect-ratio for container and object-fit: contain for video */
-        .video-player {
+        /* 💡 VIDEO CONTAINER: Forces the 4:3 aspect ratio using the modern CSS property */
+        .video-player-final {
             width: 100%;
-            /* Defines the 16:9 aspect ratio of the container */
-            aspect-ratio: 16 / 9; 
+            /* Defines the 4:3 aspect ratio (can be changed to 16 / 9 if needed) */
+            aspect-ratio: 4 / 3; 
             
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            background-color: #000; /* Shows black bars if video doesn't match 16:9 */
+            background-color: #000; /* Ensures black bars are visible */
             overflow: hidden;
             position: relative; 
         }
 
-        /* ⚠️ Fluid Player Element Overrides - Keep these for maximum specificity */
-        /* Forces the video and its wrappers to fill the container, but the video content itself uses 'contain' */
-        .video-player img, 
-        .video-player video,
+        /* ⚠️ Fluid Player Element Overrides (Fills the container) */
+        .video-player-final img, 
+        .video-player-final video,
         .fluid_player_layout,
-        .fluid_player_layout > div,
-        .fluid_player_layout video {
+        .fluid_player_layout > div {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            /* ⭐ CRITICAL: Prevents cropping by showing the entire video */
-            object-fit: contain !important; /* Added !important to the CSS version as well */
+        }
+        
+        /* ⭐ CRITICAL CROPPING FIX: Targets the video element itself */
+        /* This CSS rule is backed up by the inline style and JS style */
+        .video-player-final video,
+        .fluid_player_layout video {
+            object-fit: contain !important; 
         }
 
         .interaction-bar { display: flex; align-items: center; gap: 20px; margin-top: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
@@ -87,7 +93,7 @@
         </a>
     </div>
 
-    <div class="video-player">
+    <div class="video-player-final">
         <th:block th:if="${content.fileType == 'video'}">
             <video controls class="w-full h-auto"
                    th:id="'video-player-' + ${content.id}"
@@ -106,6 +112,7 @@
             var myFP = fluidPlayer(
                 videoElementId,	{
                     "layoutControls": {
+                        // 🟢 FLUID PLAYER FIXES APPLIED:
                         "scalingMode": 'fit', 
                         "fillToContainer": true, 
                         
@@ -150,12 +157,21 @@
                 }
             });
 
+            // ⬅️ ULTRA-GUARANTEE FIX (JavaScript with !important): Re-apply styles after player initialization
+            const videoElement = document.getElementById(videoElementId);
+            if (videoElement) {
+                videoElement.style.setProperty('object-fit', 'contain', 'important'); 
+                videoElement.style.setProperty('width', '100%', 'important');
+                videoElement.style.setProperty('height', '100%', 'important');
+            }
+
+
             /*]]>*/
             </script>
         </th:block>
 
         <th:block th:if="${content.fileType == 'image'}">
-            <img th:src="${content.filePath}" th:alt="${content.title}" class="w-full h-auto" th:id="'image-' + ${content.id}"/>
+            <img th:src="${content.filePath}" th:alt="${content.title}" th:id="'image-' + ${content.id}"/>
 
             <script th:inline="javascript">
                 /*<![CDATA[*/
