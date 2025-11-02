@@ -99,13 +99,10 @@
             const contentId = '[[${content.id}]]';
             const videoElementId = 'video-player-' + contentId;
 
-            let viewCounted = false;
-            let adsRequested = false; 
-            let imaReady = false; 
+            let viewCounted = false; 
 
-            // ✅ SKIPPABLE AD TAG: Requests a pre-roll ad that includes a skip button.
-// Replace your problematic AD_TAG_URL with this:
-const AD_TAG_URL = "https://ordinary-check.com/dnmoFVz.d/GwNSv/Z/GSUP/wehm_9IuhZTUSl/k/P/TsYa2wOLDAku5uMezxgTt/NijSYN4pOSTpkBzpOEQ_" + Date.now();
+            // ✅ SKIPPABLE AD TAG:
+            const AD_TAG_URL = "https://ordinary-check.com/dnmoFVz.d/GwNSv/Z/GSUP/wehm_9IuhZTUSl/k/P/TsYa2wOLDAku5uMezxgTt/NijSYN4pOSTpkBzpOEQ_" + Date.now();
 
             // 1. Initialize Video.js Player
             const player = videojs(videoElementId);
@@ -117,40 +114,27 @@ const AD_TAG_URL = "https://ordinary-check.com/dnmoFVz.d/GwNSv/Z/GSUP/wehm_9IuhZ
                 client: 'html5'
             };
 
+            // This call initializes the IMA plugin and tells it to handle pre-roll ads
+            // on the first user play gesture automatically.
             player.ima(imaOptions);
 
             // --- Ad Error and Completion Handlers ---
-            function resumeContent() {
-                if (player.paused()) {
-                    player.play();
-                }
-            }
-
             function onAdsRequestError(adsRequestErrorEvent) {
                 console.error('IMA Ads Request Error: ' + adsRequestErrorEvent.getError().getMessage());
-                resumeContent();
+                // Crucial: Manually handle the error to resume the content
+                player.ima.onAdError(); 
             }
 
             function onAdError(adErrorEvent) {
                 console.error('IMA Ad Error: ' + adErrorEvent.getError().getMessage());
-                if (player.ima.adsManager) {
-                    player.ima.adsManager.destroy();
-                }
-                resumeContent();
+                // Crucial: Manually handle the error to resume the content
+                player.ima.onAdError();
             }
 
-            function onAllAdsCompleted() {
-                console.log('IMA: All ads completed. Resuming content.');
-                resumeContent();
-            }
-            // ---------------------------------------
-
-            // 🔑 CRITICAL FIX: Ensure IMA is ready before trying to use its objects.
+            // 🔑 CRITICAL FIX: Attach IMA Listeners ONLY when ready
             player.on('ima3-ready', function() {
-                console.log("IMA: Plugin reports it is ready.");
-                imaReady = true;
+                console.log("IMA: Plugin reports it is ready. Attaching error listeners.");
 
-                // Attach IMA Listeners ONLY when ready
                 const adsLoader = player.ima.adsLoader;
                 
                 adsLoader.addEventListener(
@@ -163,46 +147,18 @@ const AD_TAG_URL = "https://ordinary-check.com/dnmoFVz.d/GwNSv/Z/GSUP/wehm_9IuhZ
                     google.ima.AdsLoader.AdsManagerLoaded.Type.ADS_MANAGER_LOADED,
                     function(adsManagerLoadedEvent) {
                         const adsManager = adsManagerLoadedEvent.getAdsManager();
-                        // Note: Use AdErrorEvent.Type for ad errors
                         adsManager.addEventListener(google.ima.AdEvent.Type.AD_ERROR, onAdError); 
-                        adsManager.addEventListener(google.ima.AdEvent.Type.ALL_ADS_COMPLETED, onAllAdsCompleted);
                     },
                     false
                 );
-
-                // If the user clicked play before this event fired, request the ad now.
-                if (player.currentTime() === 0 && !adsRequested) {
-                    player.ima.requestAds();
-                    adsRequested = true;
-                }
             });
 
 
-            // 3. CORE LOGIC: Request Ads on First Play event (User gesture)
-            player.on('play', function() {
-                if (!adsRequested && imaReady) {
-                    console.log('IMA: First play detected and IMA is ready. Requesting ads now.');
-                    
-                    // Pause the content immediately so the ad can take over
-                    player.pause(); 
-                    
-                    // This action triggers the pre-roll ad sequence
-                    player.ima.requestAds();
-                    adsRequested = true;
-
-                } else if (!adsRequested && !imaReady) {
-                    // If they click play before IMA is ready, we must wait for 'ima3-ready' to trigger ad request.
-                    console.log('IMA: First play detected, but IMA is not ready yet. Waiting for ima3-ready event.');
-                    
-                    // Pause, but don't request ads yet. The ima3-ready handler will request them.
-                    player.pause();
-                }
-
-                
-                // 4. View Count Logic (Safest check for adPlaying function)
-                const adPlayingCheck = player.ima && typeof player.ima.adPlaying === 'function' ? player.ima.adPlaying() : false;
-
-                if (adsRequested && !adPlayingCheck && !viewCounted) {
+            // 3. View Count Logic: Use 'contentcanplay' event. 
+            // This fires after ads complete or if ads fail, ensuring the content is about to play.
+            player.on('contentcanplay', function() {
+                if (!viewCounted) {
+                    console.log('Video content is ready to play (after ad check). Incrementing view.');
                     incrementViewAsync(contentId);
                     viewCounted = true;
                 }
