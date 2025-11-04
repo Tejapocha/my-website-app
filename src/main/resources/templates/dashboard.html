@@ -100,19 +100,30 @@
             transform: translateY(-3px); 
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08); 
         }
-        .card-img-top { 
+        
+        /* Thumbnail/Image Container common styles */
+        .card-img-container {
             height: 180px; 
-            object-fit: cover; 
+            overflow: hidden; /* CRUCIAL: Hides the part of the image that overflows */
             border-top-left-radius: 12px; 
             border-top-right-radius: 12px; 
             background-color: var(--dark-blue);
         }
-        
+
+        /* Thumbnail Image Size Fix */
+        .card-img-container img {
+            /* FIX: Ensures image never exceeds its container width */
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures image fills container without distortion */
+            display: block;
+        }
+
         /* The video-thumbnail class is the parent container for the thumbnail image */
         .video-thumbnail {
-            /* Ensures the ::after element (play icon) is positioned correctly relative to the image */
             position: relative; 
             display: block;
+            height: 100%; /* Ensure it respects the parent container height */
         }
         
         /* Play Icon Overlay for Videos */
@@ -129,6 +140,7 @@
             opacity: 0.9;
             pointer-events: none;
             text-shadow: 0 0 15px rgba(0,0,0,1);
+            z-index: 5;
         }
         
         .btn-primary {
@@ -309,17 +321,20 @@ l.parentNode.insertBefore(s, l);
                         
                         <a th:href="@{/view/{id}(id=${c.id})}" target="_blank" style="text-decoration: none; color: inherit;">
                             
-                            <div th:if="${c.fileType == 'video'}" class="video-thumbnail">
-                                <img th:src="${c.thumbnailUrl}" 
-                                     th:alt="${c.title} + ' Thumbnail'" 
-                                     loading="lazy"
-                                     onerror="this.onerror=null; this.src='@{/images/default-video-placeholder.png}';"/>
-                            </div>
-                            
-                            <div th:if="${c.fileType == 'image'}">
-                                <img th:src="${c.filePath}" th:alt="${c.title}" class="card-img-top" loading="lazy"/>
+                            <div class="card-img-container">
+                                <div th:if="${c.fileType == 'video'}" class="video-thumbnail">
+                                    <img th:src="${c.thumbnailUrl}" 
+                                         th:alt="${c.title} + ' Thumbnail'" 
+                                         loading="lazy"
+                                         onerror="this.onerror=null; this.src='@{/images/default-video-placeholder.png}';"/>
+                                </div>
+                                
+                                <div th:if="${c.fileType == 'image'}">
+                                    <img th:src="${c.filePath}" th:alt="${c.title}" loading="lazy"/>
+                                </div>
                             </div>
                             </a>
+                        
                         <div class="card-body">
                             <h5 class="card-title text-truncate" th:text="${c.title}">Content Title</h5>
                             

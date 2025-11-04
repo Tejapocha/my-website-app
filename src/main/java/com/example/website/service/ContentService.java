@@ -11,7 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -25,7 +25,7 @@ public class ContentService {
 
     private final ContentRepository contentRepository;
     private final CloudinaryService cloudinaryService;
-    private final LikeRepository likeRepository; 
+    private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
 
     public ContentService(ContentRepository contentRepository, CloudinaryService cloudinaryService,
@@ -40,7 +40,7 @@ public class ContentService {
         String contentType = file.getContentType();
         if (contentType != null) {
             return contentType.startsWith("video") ? "video" :
-                   contentType.startsWith("image") ? "image" : "other";
+                    contentType.startsWith("image") ? "image" : "other";
         }
         return "unknown";
     }
@@ -63,18 +63,15 @@ public class ContentService {
         String fileType = getFileType(file);
         content.setFileType(fileType);
 
-        // 3. ⭐ NEW: Generate and set thumbnail URL for videos ⭐
+        // 3. ⭐ CRITICAL FIX: Generate and set thumbnail URL for videos ⭐
         if ("video".equals(fileType)) {
-            // Cloudinary transformation: replaces /upload/ with /upload/w_400,c_fill,g_auto,pg_1/
-            // which tells Cloudinary to extract the first frame (pg_1), resize it to 400px, 
-            // and use it as an image URL.
             String thumbnailUrl = generateCloudinaryThumbnailUrl(publicUrl);
             content.setThumbnailUrl(thumbnailUrl);
         } else if ("image".equals(fileType)) {
-             // For images, the thumbnail URL can just be the main image URL itself
-             content.setThumbnailUrl(publicUrl);
+            // For images, the thumbnail URL can just be the main image URL itself
+            content.setThumbnailUrl(publicUrl);
         } else {
-             content.setThumbnailUrl(null); // Or a generic placeholder URL
+            content.setThumbnailUrl(null); // Or a generic placeholder URL
         }
 
         content.setUploadDate(LocalDateTime.now());
@@ -86,14 +83,14 @@ public class ContentService {
 
     @Transactional
     public void updateContent(Content updatedContent, MultipartFile file) throws IOException {
-        
+
         Content existingContent = contentRepository.findById(updatedContent.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Content not found with ID: " + updatedContent.getId()));
 
         existingContent.setTitle(updatedContent.getTitle());
         existingContent.setDescription(updatedContent.getDescription());
         existingContent.setTags(updatedContent.getTags());
-        
+
         if (file != null && !file.isEmpty()) {
             // 1. Upload new file
             String publicUrl = cloudinaryService.uploadFile(file);
@@ -102,65 +99,44 @@ public class ContentService {
             // 2. Determine new file type
             String fileType = getFileType(file);
             existingContent.setFileType(fileType);
-            
-            // 3. ⭐ NEW: Update thumbnail URL if file changed ⭐
+
+            // 3. ⭐ CRITICAL FIX: Update thumbnail URL if file changed ⭐
             if ("video".equals(fileType)) {
                 String thumbnailUrl = generateCloudinaryThumbnailUrl(publicUrl);
                 existingContent.setThumbnailUrl(thumbnailUrl);
             } else if ("image".equals(fileType)) {
-                 existingContent.setThumbnailUrl(publicUrl);
+                existingContent.setThumbnailUrl(publicUrl);
             } else {
-                 existingContent.setThumbnailUrl(null);
+                existingContent.setThumbnailUrl(null);
             }
         }
-        
+
         contentRepository.save(existingContent);
     }
-    
+
     /**
-     * Helper to create a thumbnail image URL from a Cloudinary video URL 
-     * using URL transformations.
+     * Helper to create a thumbnail image URL from a Cloudinary video URL
+     * using URL transformations. This fix ensures the transformation parameters
+     * are correctly injected into the URL structure.
      * @param videoUrl The base public URL of the video.
-     * @return The transformed URL pointing to a thumbnail image.
+     * @return The transformed URL pointing to a thumbnail image (.jpg).
      */
     private String generateCloudinaryThumbnailUrl(String videoUrl) {
-        // Example video URL structure: 
-        // .../upload/v123456789/my_folder/my_video.mp4
-        
-        // We inject the transformation: w_400,c_fill,g_auto,pg_1 (width 400, fill, auto gravity, page 1/first frame)
-        // We also change the extension to .jpg to treat the result as an image.
-        
-        String transformation = "/upload/w_400,c_fill,g_auto,pg_1/";
-        
-        // Find the index of the first segment after /upload/ (e.g., v123456789)
-        int uploadIndex = videoUrl.indexOf("/upload/");
-        if (uploadIndex == -1) {
-            return videoUrl; // Fallback or error
-        }
-        
-        // URL parts: BASE_URL + /upload/ + VERSION_FOLDER/FILE_NAME.EXT
-        int versionIndex = videoUrl.indexOf("/", uploadIndex + "/upload/".length());
-        
-        if (versionIndex == -1) {
-             // Structure is unexpected, return original or default
-            return videoUrl;
-        }
+        // Transformation: width 400, fill, auto gravity, page 1 (first frame)
+        // DO NOT include the slashes here, they are added in the replace operation.
+        String transformation = "w_400,c_fill,g_auto,pg_1";
 
-        // BASE_URL + /upload/
-        String baseUrlWithUpload = videoUrl.substring(0, uploadIndex) + "/upload/";
-        
-        // VERSION_FOLDER/FILE_NAME.EXT (or just FILE_NAME.EXT if no version)
-        String pathAfterUpload = videoUrl.substring(uploadIndex + "/upload/".length());
-        
-        // The transformation is applied AFTER the /upload/
-        String newUrl = baseUrlWithUpload + transformation + pathAfterUpload;
+        // 1. Inject the transformation: replaces "/upload/" with "/upload/transformation/"
+        String newUrl = videoUrl.replace("/upload/", "/upload/" + transformation + "/");
 
-        // Finally, ensure the extension is .jpg (important for image display)
+        // 2. Change the file extension to .jpg (Crucial: Cloudinary needs this to return an image)
         int lastDotIndex = newUrl.lastIndexOf('.');
         if (lastDotIndex > newUrl.lastIndexOf('/')) {
-             newUrl = newUrl.substring(0, lastDotIndex) + ".jpg";
+            // Correctly replace the extension (e.g., .mp4 to .jpg)
+            newUrl = newUrl.substring(0, lastDotIndex) + ".jpg";
         } else {
-             newUrl += ".jpg";
+            // Fallback: add .jpg if no clear extension was found
+            newUrl += ".jpg";
         }
 
         return newUrl;
@@ -205,7 +181,7 @@ public class ContentService {
             content.setLikes(content.getLikes() + 1);
         }
 
-        contentRepository.save(content); 
+        contentRepository.save(content);
         return content.getLikes();
     }
 

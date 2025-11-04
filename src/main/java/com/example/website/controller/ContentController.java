@@ -123,7 +123,9 @@ public class ContentController {
 
             boolean isLiked = currentUserId != 0L && contentService.isLikedByUser(id, currentUserId);
 
-            contentService.incrementViews(id);
+            // ⭐ FIX: REMOVED synchronous view increment here. 
+            // It is now handled by the JavaScript POST request upon playback/load.
+            // contentService.incrementViews(id); 
 
             model.addAttribute("content", content);
             model.addAttribute("isLiked", isLiked);
@@ -135,6 +137,36 @@ public class ContentController {
             return "redirect:/dashboard";
         }
     }
+    
+    // ⭐ NEW ENDPOINT: Handles asynchronous view increment from content-detail.html ⭐
+    @PostMapping("/view/increment/{id}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> incrementViewAsync(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // 1. Increment the view count in the database
+            contentService.incrementViews(id);
+            
+            // 2. Fetch the updated view count to send back to the client
+            Content content = contentService.getById(id);
+            
+            response.put("success", true);
+            // newViews is needed to update the 'Views' span on the detail page
+            response.put("newViews", content.getViews()); 
+            
+            return ResponseEntity.ok(response);
+        } catch (EntityNotFoundException e) {
+            response.put("success", false);
+            response.put("error", "Content not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (Exception e) {
+            System.err.println("Error processing view increment: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to increment view count on server.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
 
     // -----------------------------------------------------------------------------------
     // --- INTERACTION ENDPOINTS ---
@@ -142,7 +174,6 @@ public class ContentController {
 
     /**
      * Toggles the like status. Allows unauthenticated (anonymous) access.
-     * FIX: Removed the 401 Unauthorized check for guests.
      */
     @PostMapping("/like/{id}")
     @ResponseBody

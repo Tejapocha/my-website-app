@@ -32,12 +32,19 @@
         .btn-back { margin-bottom: 20px; display: inline-block; color: var(--dark-blue); font-weight: bold; text-decoration: none;}
         .video-player-final {
             width: 100%;
-            aspect-ratio: 4 / 3;
+            /* Maintain Aspect Ratio for consistency, using 16:9 for general video */
+            aspect-ratio: 16 / 9; 
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             background-color: #000;
             overflow: hidden;
             position: relative;
+        }
+        /* Make sure the image inside the container also respects the size */
+        .video-player-final img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Good for displaying images/thumbnails within the video area */
         }
         .video-player-final .video-js {
             position: absolute;
@@ -154,11 +161,10 @@
             });
 
 
-            // 3. View Count Logic: Use 'contentcanplay' event. 
-            // This fires after ads complete or if ads fail, ensuring the content is about to play.
-            player.on('contentcanplay', function() {
+            // 3. View Count Logic: Use the 'play' event for a more reliable trigger. 
+            player.on('play', function() {
                 if (!viewCounted) {
-                    console.log('Video content is ready to play (after ad check). Incrementing view.');
+                    console.log('Video playback started (first time). Incrementing view.');
                     incrementViewAsync(contentId);
                     viewCounted = true;
                 }
@@ -168,11 +174,17 @@
         </th:block>
 
         <th:block th:if="${content.fileType == 'image'}">
-            <img th:src="${content.filePath}" th:alt="${content.title}" th:id="'image-' + ${content.id}"/>
+            <img th:src="${content.thumbnailUrl ?: content.filePath}" 
+                 th:alt="${content.title}" 
+                 th:id="'image-' + ${content.id}"
+            />
 
             <script th:inline="javascript">
                 /*<![CDATA[*/
                 const imageContentId = /*[[${content.id}]]*/ 'defaultId';
+                
+                // ⭐ Cleaned up view count logic for images ⭐
+                // The view is incremented immediately when the detail page loads.
                 incrementViewAsync(imageContentId);
                 /*]]>*/
             </script>
@@ -358,11 +370,20 @@ function handleLikeDetail(button) {
 }
 
 function incrementViewAsync(contentId) {
+    // ⭐ CRITICAL: The endpoint must exist in ContentController as a POST mapping
     fetch(`/view/increment/${contentId}`, {
         method: 'POST',
         keepalive: true
     })
-    .then(response => response.json())
+    .then(response => {
+        // Handle non-JSON response if the endpoint is missing or fails
+        if (!response.ok) {
+             console.error(`View increment failed with status: ${response.status}. Check ContentController for the /view/increment/{id} POST mapping.`);
+             // If debugging: check the network tab for 404/500 here!
+             return { success: false, error: "Network or Server error." };
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             console.log(`View count for ${contentId} incremented successfully.`);
