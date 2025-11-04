@@ -33,6 +33,8 @@ public class SecurityConfig {
                     "/view/**",     // Detail page views
                     "/register",
                     "/css/**",
+                    "/sitemap.xml", 
+                    "/robots.txt",
                     "/js/**",
                     "/uploads/**",
                     "/images/**"    // Static/Public files
@@ -56,6 +58,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
 
+     
             // Custom Login Page
             .formLogin(form -> form
                 .loginPage("/login")
