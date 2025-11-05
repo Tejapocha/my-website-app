@@ -65,7 +65,7 @@
             overflow: hidden; /* To prevent ad elements from breaking fixed height */
         }
         
-        /* Ad Banner Styles for bottom (728x90 standard) */
+        /* Ad Banner Styles for content banners */
         .ad-placeholder-banner {
             background-color: var(--accent-blue);
             color: white;
@@ -73,17 +73,31 @@
             margin-bottom: 20px;
             border-radius: 8px;
             text-align: center;
-            height: auto; /* Responsive height for mobile/desktop banners */
+            height: auto; 
             min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             overflow: hidden;
+            position: relative; /* Default for desktop content flow */
+        }
+        
+        /* ====================================================================== */
+        /* === DEDICATED AD CLASS STYLES (NEW) === */
+        /* ====================================================================== */
+        
+        /* Desktop Top-Left Ad Container - Use for one of the sticky side ads */
+        .desktop-ad-top-left {
+            /* This ad will be visible and sticky on large screens */
+        }
+        
+        /* Mobile Fixed Bottom Ad Container */
+        .mobile-ad-bottom {
+            display: none; /* **Hidden by default on desktop** */
         }
 
         /* ====================================================================== */
-        
         /* Main Content Container Adjustments */
         .main-content-row {
             padding-top: 20px;
@@ -104,7 +118,7 @@
         /* Thumbnail/Image Container common styles */
         .card-img-container {
             height: 180px; 
-            overflow: hidden; /* CRUCIAL: Hides the part of the image that overflows */
+            overflow: hidden; 
             border-top-left-radius: 12px; 
             border-top-right-radius: 12px; 
             background-color: var(--dark-blue);
@@ -112,10 +126,9 @@
 
         /* Thumbnail Image Size Fix */
         .card-img-container img {
-            /* FIX: Ensures image never exceeds its container width */
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures image fills container without distortion */
+            object-fit: cover; 
             display: block;
         }
 
@@ -123,7 +136,7 @@
         .video-thumbnail {
             position: relative; 
             display: block;
-            height: 100%; /* Ensure it respects the parent container height */
+            height: 100%; 
         }
         
         /* Play Icon Overlay for Videos */
@@ -135,7 +148,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: var(--light-pink); /* Use light pink for icon */
+            color: var(--light-pink); 
             font-size: 3rem;
             opacity: 0.9;
             pointer-events: none;
@@ -158,7 +171,7 @@
         
         /* Specific Admin Styles */
         .admin-delete-btn {
-            background-color: rgba(220, 53, 69, 0.85) !important; /* Red with transparency */
+            background-color: rgba(220, 53, 69, 0.85) !important; 
             border: none;
             color: white;
             width: 32px;
@@ -173,6 +186,40 @@
             background-color: #dc3545 !important;
         }
 
+        /* ====================================================================== */
+        /* === MOBILE MEDIA QUERY (max-width: 768px) === */
+        /* ====================================================================== */
+        @media (max-width: 768px) {
+            
+            /* Hides all side columns on mobile */
+            .col-lg-2.d-none.d-lg-block {
+                display: none !important;
+            }
+
+            /* Hides the top-left ad container on mobile (crucial for replacement logic) */
+            .desktop-ad-top-left {
+                display: none !important; 
+            }
+
+            /* Makes the mobile ad visible and sticks it to the bottom */
+            .mobile-ad-bottom {
+                display: flex !important; /* **Makes the ad visible** */
+                position: fixed; /* Makes it stick to the viewport */
+                bottom: 0; /* Pins it to the bottom edge */
+                left: 0;
+                right: 0;
+                width: 100%; /* Full width */
+                z-index: 999; /* Ensure it stays above content */
+                margin: 0; /* Remove any margins */
+                border-radius: 0; /* Optional: Clean bottom bar look */
+                min-height: 60px; /* Standard mobile banner height */
+            }
+            
+            /* Add padding to body to prevent content from hiding behind the fixed ad */
+            body {
+                padding-bottom: 70px; /* Ad height (60px) + buffer */ 
+            }
+        }
     </style>
 </head>
 <body>
@@ -268,26 +315,14 @@
     <div class="row main-content-row">
         
         <div class="col-lg-2 d-none d-lg-block">
-            <div class="ad-placeholder sticky-top mb-4" style="top: 20px;">
-            <script>
-(function(nfox){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = nfox || {};
-s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>
+            <div class="ad-placeholder sticky-top mb-4 desktop-ad-top-left" style="top: 20px;">
                 <script onerror="this.remove()" src="//useful-appearance.com/bRX.Vwshd/G/lq0QYZWdcD/rePm_9Gu/ZxUolmkEP/T/Y/2/OjTeAyx/Nhj/gVtONtjIYX5/M/DOEe2oOKQf"></script>
             </div>
+            
             <div class="ad-placeholder sticky-top" style="top: 290px;">
                <script onerror="this.remove()" src="//ordinary-check.com/cpDt9/6/b.2r5KleSgWBQi9BN/j/Yg5BMfDsE/3ZN/yK0b2tNGjckuwpMYT/co4e"></script>
             </div>
         </div>
-        
         <div class="col-12 col-lg-8">
             
             <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -300,18 +335,6 @@ l.parentNode.insertBefore(s, l);
             </div>
 
             <div class="ad-placeholder-banner mb-4">
-            <script>
-(function(nfox){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = nfox || {};
-s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>
                 <script onerror="this.remove()" src="//useful-appearance.com/brX.VUsFdRG/l/0NYtWUcF/-eQmS9DuDZoU/lWkOPVT/Yy2/O_TiAbxeNkjagftvNKjzYs5/MMDZEq2pOEQb"></script>
             </div>
 
@@ -373,18 +396,6 @@ l.parentNode.insertBefore(s, l);
             </div>
             
             <div class="ad-placeholder-banner mt-5 mb-3">
-            <script>
-(function(nfox){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = nfox || {};
-s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>
                 <script onerror="this.remove()" src="//useful-appearance.com/bmXyVcsgd.Gnlu0WYzWacN/deTmi9QuFZoUtlIkZPLT/Yh2MOkTSAZxLOkDnEqtKN/jgY/5ZMoD-E_4TMrgs"></script>
             </div>
 
@@ -427,11 +438,15 @@ l.parentNode.insertBefore(s, l);
 
     </div>
     
+    <div class="mobile-ad-bottom ad-placeholder-banner">
+        <script onerror="this.remove()" src="//ordinary-check.com/c.D\/9_6tbc2f5glXSJWHQW9\/N\/jnYV4vNMzQQ-wSM_y\/0R2xNWj\/g\/3ZNDuA\/0v"></script>
+    </div>
     <div class="row mt-5">
         <div class="col-12">
              <div class="ad-placeholder-banner mb-3">
                 <script onerror="this.remove()" src="//ordinary-check.com/c.D\/9_6tbc2f5glXSJWHQW9\/N\/jnYV4vNMzQQ-wSM_y\/0R2xNWj\/g\/3ZNDuA\/0v"></script>
             </div>
+            
              <div class="ad-placeholder-banner">
              <script>
 (function(nfox){
