@@ -7,6 +7,8 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    
+    <link rel="icon" href="https://www.dfsblog.in/favicon.ico"> 
 
     <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
@@ -14,7 +16,7 @@
     <link href="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.css" rel="stylesheet" type="text/css">
     <link href="https://googleads.github.io/videojs-ima/dist/videojs.ima.css" rel="stylesheet" type="text/css">
     
-    <script src="//imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+    <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
     
     <script src="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.min.js"></script> 
     <script src="https://googleads.github.io/videojs-ima/dist/videojs.ima.js"></script>
@@ -107,8 +109,7 @@
 
             let viewCounted = false; 
 
-            // ✅ SKIPPABLE AD TAG:
-            const AD_TAG_URL = "https://vast.yomeno.xyz/vast?spot_id=1470154" + Date.now();
+            const AD_TAG_URL = "https://spry-trick.com/dRmnFbz/d.GrNkv/ZrGfUr/DeCmR9HunZTUSlVkCPYTHYT2gODD/kA5TMmzVg/tANYjYYl4SO/T/kdzfOXS/Zms/awWi1/pndVDE0exy";
 
             // 1. Initialize Video.js Player
             const player = videojs(videoElementId);
@@ -137,7 +138,7 @@
                 player.ima.onAdError();
             }
 
-            // 🔑 CRITICAL FIX: Attach IMA Listeners ONLY when ready
+            // CRITICAL: Attach IMA Listeners ONLY when ready
             player.on('ima3-ready', function() {
                 console.log("IMA: Plugin reports it is ready. Attaching error listeners.");
 
@@ -182,8 +183,7 @@
                 /*<![CDATA[*/
                 const imageContentId = /*[[${content.id}]]*/ 'defaultId';
                 
-                // ⭐ Cleaned up view count logic for images ⭐
-                // The view is incremented immediately when the detail page loads.
+                // View count for images increments immediately on page load.
                 incrementViewAsync(imageContentId);
                 /*]]>*/
             </script>
@@ -223,18 +223,7 @@
         <button class="btn btn-dark btn-sm"
                 th:onclick="'javascript:copyLink(' + ${content.id} + ');'" ><i class="fas fa-link me-1"></i> Copy Link</button>
     </div>
- <script>
-(function(nfox){
-var d = document,
-    s = d.createElement('script'),
-    l = d.scripts[d.scripts.length - 1];
-s.settings = nfox || {};
-s.src = "\/\/useful-appearance.com\/bmX\/V.sMd\/GBlh0OYbWdcG\/ue\/mm9\/uvZcUalpkIP_TQYh2UO-T\/AUxlNvjogVtZNLjcYq5XMCD-Ev2\/OXQv";
-s.async = true;
-s.referrerPolicy = 'no-referrer-when-downgrade';
-l.parentNode.insertBefore(s, l);
-})({})
-</script>
+ 
     <div class="comments-section mt-4">
         <h2>Comments</h2>
 
@@ -369,7 +358,7 @@ function handleLikeDetail(button) {
 }
 
 function incrementViewAsync(contentId) {
-    // ⭐ CRITICAL: The endpoint must exist in ContentController as a POST mapping
+    // CRITICAL: The endpoint must exist in ContentController as a POST mapping
     fetch(`/view/increment/${contentId}`, {
         method: 'POST',
         keepalive: true
