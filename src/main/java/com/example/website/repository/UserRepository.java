@@ -18,14 +18,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Used for login (by Spring Security) and checking for duplicates during registration.
      */
     Optional<User> findByUsername(String username);
-
     /**
      * Finds a User entity by their unique email address.
      * Used for checking for duplicates during registration.
      */
     Optional<User> findByEmail(String email);
-
-    /**
+     /**
      * Checks if a user with the given username already exists.
      */
     boolean existsByUsername(String username);
