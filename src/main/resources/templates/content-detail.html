@@ -193,8 +193,17 @@
     <h1 th:text="${content.title}" class="mt-4">Video Title</h1>
     <p class="text-muted small">ID: <span th:text="${content.id}"></span> | Type: <span th:text="${content.fileType}"></span> | Uploaded: <span th:text="${#temporals.format(content.uploadDate, 'MMM dd, yyyy')}"></span></p>
     <p th:text="${content.description}" class="lead"></p>
-    <p><strong>🏷 Tags:</strong> <span th:text="${content.tags}"></span></p>
-
+    
+    <div class="video-tags mt-3 mb-3">
+        <strong>🏷 Tags:</strong> 
+        <th:block th:each="videoTag : ${content.tags.split(',')}" th:with="cleanTag=${#strings.trim(videoTag)}">
+            <a th:if="${not #strings.isEmpty(cleanTag)}"
+               th:href="@{/dashboard(tag=${cleanTag})}"
+               class="badge bg-primary me-1 text-decoration-none p-2">
+                <span th:text="${cleanTag}">tag-name</span>
+            </a>
+        </th:block>
+    </div>
     <div class="interaction-bar">
         <span>Views: <strong id="view-count" th:text="${content.views}">100</strong></span>
 
